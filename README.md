@@ -10,7 +10,7 @@ A plataforma centraliza informações estratégicas, permitindo controle total d
 ## 🚀 Funcionalidades Principais
 
 ### 📊 Precificação Multipla por Marketplace
-
+![Dashboard do sistema](carol.png)
 * Cálculo automático de preços para:
 
   * Amazon
