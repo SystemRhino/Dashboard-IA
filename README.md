@@ -10,7 +10,7 @@ A plataforma centraliza informações estratégicas, permitindo controle total d
 ## 🚀 Funcionalidades Principais
 
 ### 📊 Precificação Multipla por Marketplace
-![Dashboard do sistema](carol.png)
+![Dashboard do sistema](https://i.ibb.co/Ldcs39pB/Captura-de-tela-2025-11-26-214354.png)
 * Cálculo automático de preços para:
 
   * Amazon
