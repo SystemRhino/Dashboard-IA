@@ -23,7 +23,7 @@ A plataforma centraliza informações estratégicas, permitindo controle total d
 ---
 
 ### 🧾 Base de Códigos de Barras
-
+![Dashboard do sistema](https://i.ibb.co/QFTk83TS/Captura-de-tela-2025-11-26-215021.png)
 * Cadastro manual de códigos de barras
 * Importação em massa via arquivo
 * Associação de códigos a produtos
@@ -32,7 +32,7 @@ A plataforma centraliza informações estratégicas, permitindo controle total d
 ---
 
 ### 💰 Gestão de Custos
-
+![Dashboard do sistema](https://i.ibb.co/qMjpjN4S/Captura-de-tela-2025-11-26-215051.png)
 * Upload de base de custos
 * Importação por planilha
 * Consulta automática do preço de custo no precificador
@@ -41,7 +41,7 @@ A plataforma centraliza informações estratégicas, permitindo controle total d
 ---
 
 ### 🖼️ Conversor e Editor de Imagens
-
+![Dashboard do sistema](https://i.ibb.co/4w9GKNqG/Captura-de-tela-2025-11-26-215116.png)
 * Conversão de formatos de imagem
 * Ferramentas de edição:
 
@@ -55,7 +55,9 @@ A plataforma centraliza informações estratégicas, permitindo controle total d
 ---
 
 ### 🤖 Módulo de Inteligência Artificial
-
+![Dashboard do sistema](https://i.ibb.co/M55s7Gdb/Captura-de-tela-2025-11-26-215347.png)
+![Dashboard do sistema](https://i.ibb.co/G3FG6LxW/Captura-de-tela-2025-11-26-215434.png)
+![Dashboard do sistema](https://i.ibb.co/9Hhk3jc6/Captura-de-tela-2025-11-26-215140.png)
 * Assistente inteligente integrado ao sistema
 * Capaz de:
 
