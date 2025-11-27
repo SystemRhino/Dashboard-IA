@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Base de Códigos de Barras — Gestão</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+<style>
+  :root{
+    --bg:#eef2fb;
+    --card:#ffffffcc;
+    --muted:#6b7280;
+    --primary:#0b69ff;
+    --success:#1cbf47;
+    --danger:#ff4b4b;
+    --glass: rgba(255,255,255,0.14);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    background: linear-gradient(180deg,#eaf2ff 0%, #eef6ff 60%);
+    padding:28px;
+    color:#0f1724;
+  }
+
+  .wrap{max-width:1100px;margin:0 auto}
+  h2{margin:0 0 18px;font-weight:600}
+
+  .card{
+    background:var(--card);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius:14px;
+    padding:18px;
+    box-shadow: 0 8px 30px rgba(13,20,40,0.08);
+    border:1px solid rgba(255,255,255,0.35);
+  }
+
+  /* top controls */
+  .controls{
+    display:flex;
+    gap:12px;
+    align-items:center;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+  }
+  .controls .left{display:flex;gap:10px;align-items:center}
+  .controls .right{margin-left:auto;display:flex;gap:10px;align-items:center}
+
+  input[type="text"], select {
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid #e6eef8;
+    background:rgba(255,255,255,0.9);
+    min-width:160px;
+  }
+
+  button.btn{
+    border:0;padding:10px 12px;border-radius:10px;cursor:pointer;
+    font-weight:600;
+    display:inline-flex;gap:8px;align-items:center;
+  }
+  .btn.primary{background:var(--primary);color:#fff}
+  .btn.ghost{background:transparent;border:1px solid rgba(0,0,0,0.06);color:#0f1724}
+  .btn.success{background:var(--success);color:#fff}
+  .btn.warn{background:#f5a623;color:#fff}
+  .btn.danger{background:var(--danger);color:#fff}
+
+  /* counters */
+  .counters{display:flex;gap:12px;align-items:center}
+  .counter{
+    background:rgba(255,255,255,0.9);
+    padding:10px 14px;border-radius:10px;min-width:120px;text-align:center;
+    box-shadow: inset 0 -2px 0 rgba(0,0,0,0.03);
+  }
+  .counter .num{font-weight:700;font-size:18px;display:block}
+  .counter .lbl{font-size:12px;color:var(--muted)}
+
+  /* table */
+  .table-wrap{margin-top:16px;overflow:auto;border-radius:10px}
+  table{width:100%;border-collapse:collapse;min-width:700px}
+  thead th{
+    text-align:left;padding:12px 14px;background:linear-gradient(90deg, rgba(11,105,255,0.12), rgba(11,105,255,0.06));
+    font-weight:700;font-size:13px;color:#0b3b82;border-bottom:1px solid rgba(11,105,255,0.06)
+  }
+  tbody td{
+    padding:12px 14px;border-bottom:1px solid rgba(15,23,36,0.04);vertical-align:middle;
+  }
+
+  .status{
+    padding:6px 12px;border-radius:999px;font-weight:700;text-transform:capitalize;font-size:13px;
+    display:inline-block;
+  }
+  .status.disponivel{background:#e9f9ec;color:#087a2a}
+  .status.emuso{background:#fff0f0;color:#b00000}
+
+  .action-group{display:flex;gap:8px;align-items:center}
+  .icon-btn{border:0;background:transparent;padding:8px;border-radius:8px;cursor:pointer;font-size:14px}
+  .icon-btn.primary{background:var(--primary);color:#fff}
+  .icon-btn.ghost{background:#f5f7fb;border:1px solid #e8eef8}
+
+  /* pagination */
+  .pager{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px}
+  .page-btn{padding:8px 10px;border-radius:8px;border:1px solid #e6eef8;background:white;cursor:pointer}
+  .page-btn.active{background:var(--primary);color:white;border-color:transparent}
+
+  /* small helpers */
+  .muted{color:var(--muted);font-size:13px}
+  .flexrow{display:flex;gap:8px;align-items:center}
+
+  /* import file input hide default */
+  input[type="file"]{display:none}
+
+  /* responsive */
+  @media(max-width:900px){
+    .controls{flex-direction:column;align-items:stretch}
+    .controls .right{margin-left:0;justify-content:space-between}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <h2>Base de Códigos de Barras</h2>
+
+  <div class="card">
+    <div class="controls">
+      <div class="left">
+        <input id="searchInput" type="text" placeholder="Buscar código..." title="Busca em tempo real">
+        <select id="filterStatus" title="Filtrar por status">
+          <option value="all">Todos os status</option>
+          <option value="disponivel">Disponível</option>
+          <option value="em uso">Em uso</option>
+        </select>
+
+        <select id="pageSize" title="Registros por página">
+          <option value="5">5 / página</option>
+          <option value="10" selected>10 / página</option>
+          <option value="25">25 / página</option>
+          <option value="50">50 / página</option>
+        </select>
+      </div>
+
+      <div class="right">
+        <div class="counters">
+          <div class="counter">
+            <span class="num" id="totalCount">0</span>
+            <span class="lbl">Total</span>
+          </div>
+          <div class="counter">
+            <span class="num" id="availableCount">0</span>
+            <span class="lbl">Disponíveis</span>
+          </div>
+          <div class="counter">
+            <span class="num" id="inuseCount">0</span>
+            <span class="lbl">Em uso</span>
+          </div>
+        </div>
+
+        <div style="width:10px"></div>
+
+        <button class="btn ghost" id="importBtn"><i class="fa-solid fa-file-import"></i> Importar</button>
+        <input type="file" id="fileInput" accept=".csv,text/csv,text/plain"/>
+
+        <button class="btn primary" id="exportBtn"><i class="fa-solid fa-file-export"></i> Exportar CSV</button>
+        <button class="btn primary" id="massAddBtn"><i class="fa-solid fa-layer-group"></i> Adicionar em massa</button>
+
+
+        <button class="btn warn" id="clearByStatusBtn"><i class="fa-solid fa-filter"></i> Apagar por status</button>
+
+        <button class="btn danger" id="clearAllBtn"><i class="fa-solid fa-trash"></i> Apagar tudo</button>
+
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table aria-label="Tabela de códigos de barras">
+        <thead>
+          <tr>
+            <th style="width:55%;">Código</th>
+            <th style="width:18%;">Status</th>
+            <th style="width:27%;">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <!-- linhas via JS -->
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pager" id="pager"></div>
+    <div class="muted" style="margin-top:10px">Dica: clique no botão copiar para copiar para área de transferência; ao copiar o status será automaticamente marcado como <strong>em uso</strong>.</div>
+  </div>
+</div>
+<!-- Modal Adicionar em Massa -->
+<div id="massModal" class="modal-bg" style="
+  display:none; 
+  position:fixed; 
+  top:0; left:0; 
+  width:100%; height:100%; 
+  backdrop-filter: blur(6px);
+  background: rgba(0,0,0,0.45);
+  align-items:center; justify-content:center;
+  z-index:9999;
+">
+  <div class="modal-card" style="
+    background:white; max-width:500px; width:90%;
+    padding:22px; border-radius:16px; 
+    box-shadow:0 10px 40px rgba(0,0,0,0.2);
+  ">
+    <h3 style="margin-top:0; font-size:20px; font-weight:600;">
+      Adicionar códigos em massa
+    </h3>
+
+    <p style="margin-bottom:8px; color:#444;">
+      Cole abaixo vários códigos, um por linha:
+    </p>
+
+    <textarea id="massInput" style="
+      width:100%; height:220px; padding:12px;
+      border-radius:10px; border:1px solid #ccc;
+      font-family:monospace; font-size:14px;
+    " placeholder="7891234567890&#10;7890001112223&#10;..."></textarea>
+
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
+      <button id="closeMass" class="btn ghost">Cancelar</button>
+      <button id="addMassConfirm" class="btn success">
+        <i class="fa-solid fa-check"></i> Adicionar
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- Modal Apagar por Status -->
+<div id="deleteStatusModal" class="modal-bg" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; backdrop-filter: blur(6px); background: rgba(0,0,0,0.45); align-items:center; justify-content:center; z-index:10000;">
+  <div class="modal-card" style="background:white; max-width:420px; width:92%; padding:18px; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,0.2);">
+    <h3 style="margin-top:0; font-size:18px; font-weight:600;">Apagar por status</h3>
+    <p style="margin:6px 0 10px; color:#444;">Selecione o status que deseja apagar:</p>
+    <div style="margin-bottom:12px;">
+      <select id="deleteStatusSelect" style="width:100%; padding:10px; border-radius:8px; border:1px solid #ddd;">
+        <option value="disponivel">Disponível</option>
+        <option value="em uso">Em uso</option>
+      </select>
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:6px;">
+      <button id="cancelDeleteStatus" class="btn ghost">Cancelar</button>
+      <button id="confirmDeleteStatus" class="btn danger"><i class="fa-solid fa-trash"></i> Apagar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========== Dados + Persistência ========== */
+const STORAGE_KEY = "barcodeDB_v2";
+let codes = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+
+/* exemplo: if empty, add a few sample codes? not automatically */
+function save(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(codes));
+}
+
+/* util: unique id */
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+/* ========== UI / RENDER ========== */
+const tableBody = document.getElementById("tableBody");
+const searchInput = document.getElementById("searchInput");
+const filterStatus = document.getElementById("filterStatus");
+const pageSizeSelect = document.getElementById("pageSize");
+const pager = document.getElementById("pager");
+const totalCountEl = document.getElementById("totalCount");
+const availableCountEl = document.getElementById("availableCount");
+const inuseCountEl = document.getElementById("inuseCount");
+const fileInput = document.getElementById("fileInput");
+const importBtn = document.getElementById("importBtn");
+const exportBtn = document.getElementById("exportBtn");
+
+let state = {
+  q: "",
+  filter: "all",
+  pageSize: parseInt(pageSizeSelect.value,10),
+  page: 1
+};
+
+/* debounce helper */
+function debounce(fn, delay=250){
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(()=>fn(...args), delay); };
+}
+
+/* render list with filter/search/pagination */
+function getFiltered(){
+  const q = state.q.trim().toLowerCase();
+  const filter = state.filter;
+  let list = codes.slice().sort((a,b)=> a.code.localeCompare(b.code));
+  if(filter !== "all"){
+    if(filter === "disponivel") list = list.filter(x=> x.status === "disponivel");
+    else if(filter === "em uso") list = list.filter(x=> x.status === "em uso");
+  }
+  if(q) list = list.filter(x => x.code.toLowerCase().includes(q));
+  return list;
+}
+
+function render(){
+  const list = getFiltered();
+  const pageSize = state.pageSize;
+  const total = list.length;
+  const totalPages = Math.max(1, Math.ceil(total/pageSize));
+  if(state.page > totalPages) state.page = totalPages;
+
+  const start = (state.page-1)*pageSize;
+  const pageItems = list.slice(start, start+pageSize);
+
+  tableBody.innerHTML = "";
+  for(let item of pageItems){
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><code style="font-family:monospace">${escapeHtml(item.code)}</code></td>
+      <td><span class="status ${item.status === 'disponivel' ? 'disponivel' : 'emuso'}">${item.status}</span></td>
+      <td>
+        <div class="action-group">
+          <button title="Copiar código" class="icon-btn primary" onclick="copyCode('${item.id}')"><i class="fa-solid fa-copy"></i></button>
+          <button title="Editar status" class="icon-btn ghost" onclick="toggleStatus('${item.id}')"><i class="fa-solid fa-pen"></i></button>
+          <button title="Remover" class="icon-btn" style="color:#b00000" onclick="removeCode('${item.id}')"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      </td>
+    `;
+    tableBody.appendChild(tr);
+  }
+
+  // pager
+  renderPager(total, totalPages);
+
+  // counters (use full dataset counts)
+  totalCountEl.textContent = codes.length;
+  availableCountEl.textContent = codes.filter(x => x.status === 'disponivel').length;
+  inuseCountEl.textContent = codes.filter(x => x.status === 'em uso').length;
+
+  // save (keep persistent)
+  save();
+}
+
+/* pager renderer */
+function renderPager(total, totalPages){
+  pager.innerHTML = "";
+  // left info
+  const info = document.createElement("div");
+  info.className = "muted";
+  info.style.marginRight = "auto";
+  info.textContent = `Mostrando ${ (total===0?0: ((state.page-1)*state.pageSize+1)) }–${ Math.min(total, state.page*state.pageSize) } de ${total} (total filtrado)`;
+  pager.appendChild(info);
+
+  // page buttons
+  function btn(label, page, cls){
+    const b = document.createElement("button");
+    b.className = "page-btn";
+    if(cls) b.classList.add(cls);
+    b.textContent = label;
+    b.onclick = ()=> { state.page = page; render(); };
+    return b;
+  }
+
+  // first/prev
+  pager.appendChild(btn("<<", 1));
+  pager.appendChild(btn("<", Math.max(1, state.page-1)));
+
+  // numeric buttons (show window)
+  const maxWindow = 7;
+  let start = Math.max(1, state.page - Math.floor(maxWindow/2));
+  let end = Math.min(totalPages, start + maxWindow -1);
+  if(end - start < maxWindow -1) start = Math.max(1, end - maxWindow +1);
+
+  for(let p = start; p<=end; p++){
+    const b = btn(p, p);
+    if(p === state.page) { b.classList.add("active"); }
+    pager.appendChild(b);
+  }
+
+  // next/last
+  pager.appendChild(btn(">", Math.min(totalPages, state.page+1)));
+  pager.appendChild(btn(">>", totalPages));
+}
+
+/* ========== Actions ========== */
+function escapeHtml(str){
+  if(!str) return "";
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* add a single code */
+function addCodeRaw(codeStr, status = "disponivel"){
+  // prevent duplicate exact code
+  const exists = codes.some(x => x.code === codeStr);
+  if(exists) return false;
+  codes.push({ id: uid(), code: codeStr, status });
+  return true;
+}
+
+/* programmatic add (bulk) */
+function addCodesBulk(arrayOfCodes, status = "disponivel"){
+  let added = 0;
+  for(let c of arrayOfCodes){
+    const cc = String(c).trim();
+    if(!cc) continue;
+    if(addCodeRaw(cc, status)) added++;
+  }
+  if(added>0) render();
+  return added;
+}
+
+/* copy & set em uso */
+async function copyCode(id){
+  const item = codes.find(x=>x.id===id);
+  if(!item) return;
+  try{
+    await navigator.clipboard.writeText(item.code);
+    // set status to em uso
+    item.status = "em uso";
+    render();
+    flashMsg("Copiado para a área de transferência", 2000);
+  }catch(e){
+    alert("Falha ao copiar. Permita acesso ao clipboard ou copie manualmente.");
+  }
+}
+
+/* toggle status by edit button (available <-> em uso) */
+function toggleStatus(id){
+  const item = codes.find(x=>x.id===id);
+  if(!item) return;
+  item.status = (item.status === "disponivel") ? "em uso" : "disponivel";
+  render();
+}
+
+/* remove */
+function removeCode(id){
+  if(!confirm("Remover este código permanentemente?")) return;
+  codes = codes.filter(x=>x.id!==id);
+  render();
+}
+
+/* ========== Import / Export ========== */
+
+/* export entire DB as CSV (code,status) */
+function exportCSV(){
+  if(codes.length === 0){ alert("Sem códigos para exportar."); return; }
+  const rows = [["code","status"], ...codes.map(r => [r.code, r.status])];
+  const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `barcode_db_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* import file (CSV or plain list). Parse lines and add codes.
+   Accept CSV with header 'code' or plain lines (one code per line) or comma-separated.
+*/
+function handleFileImport(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const txt = e.target.result;
+    const parsed = parseCodesFromText(txt);
+    if(parsed.length === 0){ alert("Nenhum código válido encontrado no arquivo."); return; }
+    const added = addCodesBulk(parsed, "disponivel");
+    alert(`Import concluído — ${added} códigos adicionados (de ${parsed.length} lidos).`);
+    render();
+  };
+  reader.readAsText(file, "UTF-8");
+}
+
+/* parse possibilities:
+   - CSV with header: code,status  -> read first column as code
+   - lines: one code per line
+   - single line with commas
+*/
+function parseCodesFromText(text){
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  if(lines.length === 0) return [];
+
+  // detect CSV header
+  const first = lines[0];
+  if(first.toLowerCase().includes("code") || first.toLowerCase().includes("codigo") || first.split(",").length>1){
+    // try to parse CSV rows
+    const rows = text.split(/\r?\n/).map(r => r.trim()).filter(Boolean);
+    const parsed = [];
+    // If header present, find index of code column
+    const headerParts = rows[0].split(/,|;/).map(h=>h.replace(/(^"|"$)/g,'').trim().toLowerCase());
+    let codeIdx = headerParts.findIndex(h => ["code","codigo","código"].includes(h));
+    // fallback to first column
+    if(codeIdx === -1) codeIdx = 0;
+
+    for(let i= (headerParts.length>1 ? 1 : 0); i<rows.length; i++){
+      const parts = rows[i].split(/,|;/).map(p => p.replace(/(^"|"$)/g,'').trim());
+      if(parts[codeIdx]) parsed.push(parts[codeIdx]);
+    }
+    return parsed;
+  }
+
+  // otherwise treat as simple list: maybe comma separated in one line or multiple lines
+  if(lines.length === 1 && lines[0].includes(",")){
+    return lines[0].split(",").map(s=>s.trim()).filter(Boolean);
+  }
+
+  return lines;
+}
+
+/* ========== Events binding ========== */
+searchInput.addEventListener("input", debounce((e)=>{
+  state.q = e.target.value;
+  state.page = 1;
+  render();
+}, 200));
+
+filterStatus.addEventListener("change", (e)=>{
+  state.filter = e.target.value;
+  state.page = 1;
+  render();
+});
+
+pageSizeSelect.addEventListener("change", (e)=>{
+  state.pageSize = parseInt(e.target.value,10) || 10;
+  state.page = 1;
+  render();
+});
+
+exportBtn.addEventListener("click", exportCSV);
+
+importBtn.addEventListener("click", ()=> fileInput.click());
+fileInput.addEventListener("change", (e)=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  handleFileImport(f);
+  fileInput.value = "";
+});
+
+
+/* keyboard: ctrl+f focuses search */
+document.addEventListener("keydown", (e)=>{
+  if(e.ctrlKey && e.key.toLowerCase()==='f'){ e.preventDefault(); searchInput.focus(); searchInput.select(); }
+});
+
+/* ========== utilities ========== */
+function flashMsg(text, ms=1500){
+  const el = document.createElement("div");
+  el.textContent = text;
+  el.style.position = "fixed";
+  el.style.right = "18px";
+  el.style.bottom = "18px";
+  el.style.background = "rgba(10,10,12,0.9)";
+  el.style.color = "white";
+  el.style.padding = "10px 14px";
+  el.style.borderRadius = "10px";
+  el.style.boxShadow = "0 8px 30px rgba(2,6,23,0.4)";
+  document.body.appendChild(el);
+  setTimeout(()=> el.style.opacity = "0.02", ms-200);
+  setTimeout(()=> el.remove(), ms);
+}
+
+/* initial render */
+render();
+
+/* expose some functions to global scope for inline onclick handlers */
+window.copyCode = copyCode;
+window.toggleStatus = toggleStatus;
+window.removeCode = removeCode;
+
+/* ========== MASS ADD MODAL ========== */
+
+const massBtn = document.getElementById("massAddBtn");
+const massModal = document.getElementById("massModal");
+const closeMass = document.getElementById("closeMass");
+const massInput = document.getElementById("massInput");
+const addMassConfirm = document.getElementById("addMassConfirm");
+
+massBtn.addEventListener("click", () => {
+  massModal.style.display = "flex";
+  massInput.value = "";
+  massInput.focus();
+});
+
+closeMass.addEventListener("click", () => {
+  massModal.style.display = "none";
+});
+
+addMassConfirm.addEventListener("click", () => {
+  const text = massInput.value.trim();
+  if (!text) {
+    alert("Cole alguns códigos primeiro.");
+    return;
+  }
+
+  // divide por linhas
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+  if (lines.length === 0) {
+    alert("Nenhum código válido encontrado.");
+    return;
+  }
+
+  const added = addCodesBulk(lines, "disponivel");
+
+  alert(`Foram adicionados ${added} códigos (de ${lines.length} linhas).`);
+
+  massModal.style.display = "none";
+  render();
+});
+
+/* ========== APAGAR TUDO ========== */
+const clearAllBtn = document.getElementById("clearAllBtn");
+
+clearAllBtn.addEventListener("click", () => {
+  if (!confirm("Tem certeza que deseja APAGAR TODOS os códigos?\nEsta ação não pode ser desfeita.")) {
+    return;
+  }
+
+  // limpa o array de códigos
+  codes = [];
+
+  // salva (localStorage)
+  save();
+
+  // recarrega a tabela
+  render();
+
+  flashMsg("Todos os códigos foram apagados!", 2000);
+});
+/* ========== APAGAR POR STATUS ========== */
+const clearByStatusBtn = document.getElementById("clearByStatusBtn");
+const deleteStatusModal = document.getElementById("deleteStatusModal");
+const deleteStatusSelect = document.getElementById("deleteStatusSelect");
+const cancelDeleteStatus = document.getElementById("cancelDeleteStatus");
+const confirmDeleteStatus = document.getElementById("confirmDeleteStatus");
+
+// open modal
+clearByStatusBtn.addEventListener("click", () => {
+  // default to the current filter if available
+  const currentFilter = state.filter;
+  if(currentFilter === 'disponivel' || currentFilter === 'em uso') deleteStatusSelect.value = currentFilter;
+  else deleteStatusSelect.value = 'disponivel';
+  deleteStatusModal.style.display = 'flex';
+});
+
+cancelDeleteStatus.addEventListener("click", () => {
+  deleteStatusModal.style.display = 'none';
+});
+
+// perform deletion
+confirmDeleteStatus.addEventListener("click", () => {
+  const statusToDelete = deleteStatusSelect.value;
+  if(!statusToDelete) return;
+
+  // confirm
+  if(!confirm(`Apagar todos os códigos com status "${statusToDelete}"? Esta ação não pode ser desfeita.`)){
+    return;
+  }
+
+  // delete items with matching status
+  const before = codes.length;
+  codes = codes.filter(x => x.status !== statusToDelete);
+  const removed = before - codes.length;
+  save();
+  render();
+  deleteStatusModal.style.display = 'none';
+  flashMsg(`${removed} código(s) com status "${statusToDelete}" apagados.`, 2500);
+});
+
+// close modal when clicking outside modal-card
+deleteStatusModal.addEventListener('click', (e) => {
+  if(e.target === deleteStatusModal) deleteStatusModal.style.display = 'none';
+});
+
+/* end Apagar por Status */
+
+
+</script>
+
+</body>
+</html>

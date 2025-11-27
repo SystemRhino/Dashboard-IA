@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard — Precificadores</title>
+<link rel="icon" type="image/x-icon" href="https://cdn-icons-png.flaticon.com/512/8879/8879509.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  overflow: hidden;
+  transition: 0.3s;
+}
+
+/* Tema claro */
+body.light {
+  background: #eef1f7;
+}
+
+/* Tema escuro */
+body.dark {
+  background: #0f1117;
+  color: white;
+}
+
+#particles {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(circle at center, #1b2430, #0f1117);
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  background: #ffffff55;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  animation: float 12s infinite linear;
+}
+
+@keyframes float {
+  0% { transform: translateY(0) scale(1); }
+  100% { transform: translateY(-1200px) scale(0.3); }
+}
+
+.sidebar {
+  width: 260px;
+  height: 100vh;
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(14px);
+  border-right: 1px solid rgba(255,255,255,0.12);
+  position: fixed;
+  left: 0;
+  top: 0;
+  padding-top: 90px;
+  padding-left: 0;
+  transition: 0.25s;
+}
+
+body.dark .sidebar {
+  background: rgba(20, 20, 30, 0.35);
+}
+
+.sidebar.collapsed {
+  width: 80px;
+}
+
+.header {
+  position: fixed;
+  left: 260px;
+  top: 0;
+  height: 70px;
+  width: calc(100% - 260px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 25px;
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.14);
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  transition: .25s;
+}
+
+body.dark .header {
+  background: rgba(15, 15, 25, 0.45);
+}
+
+.header.collapsed {
+  left: 80px;
+  width: calc(100% - 80px);
+}
+
+.header .left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.toggle-btn {
+  font-size: 22px;
+  cursor: pointer;
+  color: #fff;
+}
+
+.theme-btn {
+  font-size: 20px;
+  cursor: pointer;
+  color: #fff;
+}
+
+.user-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+}
+
+.user-box img {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #fff;
+}
+
+.logout-btn {
+  margin-left: 15px;
+  padding: 6px 14px;
+  background: #ff4b4b;
+  border-radius: 8px;
+  cursor: pointer;
+  color: white;
+  border: none;
+  transition: 0.2s;
+}
+
+.logout-btn:hover {
+  background: #ff2e2e;
+}
+
+.sidebar a {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 30px;
+  color: #fff;
+  text-decoration: none;
+  font-size: 17px;
+  transition: 0.25s;
+}
+
+.sidebar.collapsed a span {
+  display: none;
+}
+
+.sidebar a i {
+  font-size: 20px;
+}
+
+.sidebar a:hover {
+  background: rgba(255,255,255,0.2);
+  padding-left: 38px;
+}
+
+.sidebar a.active {
+  background: rgba(255,255,255,0.35);
+  font-weight: 600;
+  border-left: 4px solid #fff;
+}
+
+.content {
+  margin-left: 260px;
+  margin-top: 70px;
+  height: calc(100vh - 70px);
+  transition: .25s;
+}
+
+.content.collapsed {
+  margin-left: 80px;
+}
+
+iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* ==========================================================
+      CHATBOT IA – ESTILO
+========================================================== */
+#chatbot-toggle {
+  position: fixed;
+  bottom: 25px;
+  right: 25px;
+  width: 60px;
+  height: 60px;
+  background: #6366f1;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 26px;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  z-index: 99999;
+}
+
+#chatbot-window {
+  position: fixed;
+  bottom: 100px;
+  right: 25px;
+  width: 320px;
+  height: 420px;
+  background: #fff;
+  border-radius: 14px;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.25);
+  z-index: 99999;
+}
+
+#chatbot-header {
+  background: #6366f1;
+  color: white;
+  padding: 12px;
+  text-align: center;
+  font-weight: bold;
+}
+
+#chatbot-messages {
+  flex: 1;
+  padding: 12px;
+  overflow-y: auto;
+  background: #f5f5f7;
+}
+
+.msg {
+  padding: 10px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  border-radius: 10px;
+  max-width: 85%;
+}
+
+.user-msg {
+  background: #6366f1;
+  color: white;
+  margin-left: auto;
+}
+
+.bot-msg {
+  background: #e5e7eb;
+  color: #111;
+  margin-right: auto;
+}
+
+#chatbot-input-area {
+  display: flex;
+  border-top: 1px solid #ddd;
+}
+
+#chatbot-input {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  outline: none;
+}
+
+#chatbot-send {
+  width: 60px;
+  background: #6366f1;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+</style>
+</head>
+
+<script>
+  if (localStorage.getItem("logged") !== "true") {
+    window.location.href = "login.html";
+  }
+</script>
+
+<body class="light">
+
+<div id="particles"></div>
+
+<div class="sidebar" id="sidebar">
+  <a href="multi.html" target="frame"><i class="fa-solid fa-globe"></i><span>Multi-Precificador</span></a>
+  <a href="barcode.html" target="frame"><i class="fa-solid fa-barcode"></i><span> Códigos de Barras</span></a>
+  <a href="custos.html" target="frame"><i class="fa-solid fa-tags"></i><span> Custos (Upload)</span></a> 
+  <a href="conversor.html" target="frame"><i class="fa-solid fa-arrow-right-arrow-left"></i><span> Conversor</span></a>
+  <a href="configuracoes.html" target="frame"><i class="fa-solid fa-gear"></i><span> Configurações</span></a>
+</div>
+
+<div class="header" id="header">
+  <div class="left">
+    <i class="fa-solid fa-bars toggle-btn" id="toggleSidebar"></i>
+  </div>
+
+  <div class="user-box">
+    <span>Olá, Admin</span>
+    <button onclick="logout()" style="margin: 10px; padding: 10px;" class="logout-btn">Sair</button>
+  </div>
+</div>
+
+<div class="content" id="content">
+  <iframe name="frame" src="multi.html"></iframe>
+</div>
+
+<button id="chatbot-toggle"><i class="fa-solid fa-robot"></i></button>
+
+<div id="chatbot-window">
+  <div id="chatbot-header">
+    <img src="carol.png" class="chatbot-avatar" alt="Carol">
+    <span>Carol — Assistente IA</span>
+    <button id="chatbot-clear" title="Limpar conversa"><i class="fa-solid fa-trash-can"></i></button>
+  </div>
+
+  <div id="chatbot-messages"></div>
+
+  <div id="chatbot-input-area">
+    <input id="chatbot-input" type="text" placeholder="Digite aqui...">
+    <button id="chatbot-send">➤</button>
+  </div>
+</div>
+
+<script>
+
+const sidebar = document.getElementById("sidebar");
+const header = document.getElementById("header");
+const content = document.getElementById("content");
+const toggleBtn = document.getElementById("toggleSidebar");
+
+toggleBtn.addEventListener('click', () => {
+  // Alterna a classe 'collapsed' nos três elementos principais
+  sidebar.classList.toggle('collapsed');
+  header.classList.toggle('collapsed');
+  content.classList.toggle('collapsed');
+});
+
+
+
+// Regras da ia 
+const SYSTEM_PROMPT = `
+# 🧠 Regras do Sistema — Assistente "Carol"
+
+Você é **Carol**, a assistente virtual oficial do sistema de dashboard da loja **Carol Lustres**.  
+Seu papel é auxiliar o usuário dentro do sistema, oferecendo respostas claras, educadas e objetivas.
+
+---
+
+# 👤 Identidade e Comportamento
+
+- Seu nome é **Carol — Assistente IA**.
+- Somente diga seu nome e quem você é **quando o usuário perguntar**.
+- Você é:
+  - Educada  
+  - Ágil  
+  - Amigável  
+  - Orientada para resolver dúvidas relacionadas ao sistema  
+- Nunca diga que é um modelo da OpenAI.
+- Caso perguntem sua origem, responda:  
+  **"Sou a Carol, assistente integrada criada especialmente para ajudar você dentro deste sistema."**
+- Se não souber uma resposta:
+  - Nunca invente.
+  - Diga que não sabe.
+  - Recomende procurar alguém da equipe.
+- Se a dúvida for relacionada a alguma plataforma amazon, shopee ou mercado livre 
+  - Busque a informção nos sites oficiais
+
+---
+
+# 📌 Funções Gerais da Carol
+
+Você ajuda o usuário com:
+
+- Precificação  
+- Custos  
+- Mercado Livre  
+- Amazon  
+- Shopee  
+- Conversor de Imagens  
+- Banco de códigos/DB local  
+- Funcionamento das telas do Dashboard  
+
+---
+
+# 📦 Regras do Painel de Códigos de Barras
+
+O painel de códigos gerencia os códigos usados nos e-commerces.
+
+### Funcionalidades que você deve saber explicar:
+
+1. **Copiar código disponível:** Ao copiar um código com status *"disponível"*, ele muda automaticamente para *"em uso"*.
+
+2. **Alterar status manualmente:** - Clique no ícone do lápis.  
+   - Se estiver *"disponível"*, muda para *"em uso"*.  
+   - Se estiver *"em uso"*, muda para *"disponível"*.
+
+3. **Filtros:** Permite filtrar somente:
+   - Disponíveis  
+   - Em uso  
+
+4. **Importação em massa:** O usuário pode importar um arquivo onde **cada linha é um código de barras**.
+
+5. **Excluir em massa por status:** É possível apagar todos os códigos de um status específico.
+
+---
+
+# 📊 Acesso a Dados Locais (LocalStorage)
+
+Quando o usuário enviar blocos **[CONTEXTO DE DADOS LOCAIS]**, siga estas regras:
+
+### Prioridade:
+- Use **sempre** os dados fornecidos no contexto quando disponíveis.
+
+### Banco Global de Custo:
+- Consultado via:
+  **CUSTOS GLOBAIS (Código: Custo)**
+
+### Banco Global de Códigos (Status):
+- Consultado via:
+  **CÓDIGOS DE BARRAS (Código: Status)** - Status possíveis:
+  - "disponivel"
+  - "em uso"
+
+---
+
+# 🔒 Regra de Segurança Crítica
+
+Você **nunca** deve:
+
+- Mostrar API keys  
+- Explicar como acessá-las  
+- Auxiliar a obter credenciais  
+- Manipular chaves ou tokens  
+- Expor dados sensíveis do sistema  
+
+Se perguntarem, responda:
+
+> "Não tenho autorização para acessar ou manipular informações desse tipo. Por favor, contate a equipe de TI ou suporte."
+
+---
+
+# 💰 Regras da Tela “Upload de Custos Globais”
+
+Tela responsável por preencher o banco **dbCodigos_global**.
+
+### 1. Função
+Importar **códigos x custos** em massa.
+
+### 2. Arquivos necessários
+Dois arquivos obrigatórios:
+- Um arquivo com os códigos  
+- Outro arquivo com os custos  
+
+### 3. Formato dos arquivos
+- Uma linha por item  
+- Uma coluna somente  
+- Custos no formato 0.00 ou 0,00
+
+### 4. Validação obrigatória
+O número de linhas dos dois arquivos deve ser **idêntico**.
+
+### 5. Efeito do Upload
+Substitui **toda** a base de custos global existente.
+
+### 6. Status Atual
+Exibe quantos códigos estão armazenados no momento.
+
+---
+
+# Guia de Uso do Multiprecificador (Simulação Reversa)
+
+Este guia explica como utilizar a ferramenta de precificação reversa diretamente no seu navegador. 
+
+---
+
+# 1. Painel de Dados Comuns
+
+Este é o primeiro painel e seu preenchimento é obrigatório. Ele contém informações essenciais que serão usadas para calcular o preço ideal em todas as plataformas.
+
+## Consulta de Custo (Código de Referência)
+- Serve para buscar o custo automaticamente caso você tenha uma base interna de custos.
+- Digite o código do produto (SKU) e clique em "Consultar".
+- Se encontrado, o custo será preenchido automaticamente.
+- Se não existir ou não for encontrado, você deve inserir manualmente o valor.
+
+## Custo do Produto
+- É o custo total do item para você, incluindo compra, embalagem e logística interna.
+- Este valor é a base para todos os cálculos das plataformas.
+
+## Impostos (% sobre Venda)
+- Representa a alíquota tributária aplicada sobre o preço de venda (ex.: Simples Nacional).
+- O padrão é 8.40, mas deve ser ajustado conforme sua realidade fiscal.
+
+---
+
+# 2. Painel Mercado Livre (ML) – Cor Amarela
+
+Esta seção simula o preço de venda ideal no Mercado Livre.
+
+## Margem Desejada
+- É o lucro líquido que você deseja obter sobre o preço de venda.
+
+## Frete Absorvido pelo Vendedor
+- Você deve selecionar entre "Sim" ou "Não".
+- O sistema ajusta automaticamente para “Sim” com tarifa de R$ 25,00 quando o resultado da simulação indicar que o preço sugerido será maior que R$ 79,00.  
+  (Isso acontece quando o custo do produto é superior a aproximadamente R$ 43,454.)
+
+---
+
+# 3. Painel Shopee – Cor Laranja
+
+Esta seção define a simulação de preços na Shopee.
+
+## Margem Desejada
+- Representa o lucro líquido desejado na plataforma.
+
+## Programa de Frete Grátis
+- Se você escolher "Sim":
+  - A comissão total será de 20% (14% + 6% do programa).
+  - Há uma taxa fixa adicional de R$ 4,00.
+- Se escolher "Não":
+  - A comissão será de 14%.
+  - A taxa fixa de R$ 4,00 ainda se aplica.
+
+---
+
+# 4. Painel Amazon – Cor Azul
+
+Simula o preço ideal de venda na Amazon.
+
+## Margem Desejada
+- Percentual de lucro desejado.
+
+## Peso do Produto (kg)
+- Necessário para cálculo do frete quando utilizada a opção “Calculado por Tabela”.
+
+## Categoria (Comissão %)
+- Define a alíquota de comissão da Amazon, como 11% ou 15%, conforme categoria selecionada.
+
+## Tipo de Frete (Tarifa)
+Você pode escolher entre:
+- Frete de R$ 0,00  
+- Tarifa fixa de R$ 15,00  
+- Calculado por Tabela (utiliza o peso inserido)
+
+---
+
+# 5. Como Executar os Cálculos
+
+Você pode simular preços de duas maneiras:
+
+## Cálculo Individual
+- Clique em "Calcular [Plataforma]" para simular apenas uma plataforma.
+- Útil para ajustes finos.
+
+## Cálculo Completo
+- Clique em "🚀 CALCULAR TUDO DE UMA VEZ".
+- Calcula Mercado Livre, Shopee e Amazon simultaneamente.
+
+---
+
+# 6. Painel de Resultados da Simulação
+
+Após a simulação, os resultados aparecem na parte inferior da página.
+
+## Informações exibidas:
+- **Preço Sugerido:** preço mínimo necessário para atingir a margem escolhida.  
+- **Lucro Líquido (R$):** valor restante após todos os custos e taxas.  
+- **Margem Real (%):** porcentagem final do lucro líquido sobre o preço sugerido.
+
+---
+
+# 7. Ferramentas Adicionais do Painel de Resultados
+
+## Botão Copiar
+- Copia o preço sugerido no formato 00,00 para a área de transferência.
+
+## Ver Detalhes dos Custos
+- Exibe todos os custos envolvidos no cálculo:
+  - Custo do produto
+  - Impostos
+  - Comissão
+  - Taxa fixa / Frete
+- Pode ser recolhido novamente clicando no mesmo botão.
+
+## Exportar Resultados (CSV)
+- Gera um arquivo .csv com os resultados completos das três plataformas.
+- Ideal para arquivamento, auditoria ou uso em planilhas.
+
+---
+
+
+# 🖼 Regras do Conversor de Imagens
+
+Aceita: **JPG, PNG, GIF, WEBP**
+
+### 1. Upload & Pré-visualização
+- Selecionar arquivos ou arrastar
+- Miniaturas aparecem no painel esquerdo
+- Sliders:
+  - Qualidade
+  - Brilho
+  - Contraste
+  - Saturação
+
+### 2. Edição Avançada
+- Somente para a primeira imagem
+- Possibilita:
+  - Corte
+  - Redimensionamento
+  - Marca d’água com:
+    - posição arrastável
+    - tamanho ajustável
+    - rotação
+    - opacidade  
+
+### 3. Conversão
+- Botão **Converter**
+- Mostra progresso
+- Arquivos convertidos podem ser baixados individualmente ou todos em .zip
+- Botão “Limpar convertidas”
+
+---
+
+# ⚙️ Regras da Tela de Configuração
+
+- Serve para configurar:
+  - Chave do ChatGPT  
+  - Chave do Gemini  
+- Se o ChatGPT falhar, o sistema troca automaticamente para Gemini.
+- O usuário deve gerar as chaves nos sites oficiais.
+
+---
+`;
+
+// --- CHAVES E ENDPOINTS ---
+const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
+
+// Configuração Fallback: Gemini
+const GEMINI_MODEL = 'gemini-2.5-flash';
+
+// Chaves de local storage para as apis
+const OPENAI_STORAGE_KEY = 'ai_key_openai';
+const GEMINI_STORAGE_KEY = 'ai_key_gemini';
+
+// Função para buscar as chaves do Local Storage
+function getAiKeys() {
+    return {
+        OPENAI_API_KEY: localStorage.getItem(OPENAI_STORAGE_KEY),
+        GEMINI_API_KEY: localStorage.getItem(GEMINI_STORAGE_KEY)
+    };
+}
+
+
+// --- ELEMENTOS DO CHATBOT ---
+const chatBtn = document.getElementById("chatbot-toggle");
+const chatWindow = document.getElementById("chatbot-window");
+const msgBox = document.getElementById("chatbot-messages");
+const input = document.getElementById("chatbot-input");
+const sendBtn = document.getElementById("chatbot-send");
+const clearBtn = document.getElementById("chatbot-clear");
+
+/* Dados de Código de Barras e Custos */
+let global_costs = JSON.parse(localStorage.getItem('dbCodigos_global') || '{}');
+let barcode_data = JSON.parse(localStorage.getItem('barcodeDB_v2') || '[]');
+
+/* Abrir / fechar */
+chatBtn.onclick = () => {
+  const isCurrentlyOpen = chatWindow.style.display === "flex";
+  
+  if (isCurrentlyOpen) {
+    // Fecha
+    chatWindow.style.display = "none";
+  } else {
+    // Abre
+    chatWindow.style.display = "flex";
+  }
+};
+
+// Limpar chat
+clearBtn.onclick = () => {
+    msgBox.innerHTML = '';
+}
+
+// Adiciona mensagem ao chat
+function addMsg(text, sender) {
+    const msg = document.createElement("div");
+    msg.classList.add("msg", sender === "user" ? "user-msg" : "bot-msg");
+
+    let contentHTML = text;
+
+    // APLICAR MARKDOWN SOMENTE PARA MENSAGENS DO BOT
+    if (sender === "bot" && typeof marked !== 'undefined') {
+        // Converte o texto Markdown em HTML
+        contentHTML = marked.parse(text); 
+    } else {
+        // Mantém a conversão de quebra de linha simples para outros casos
+        contentHTML = text.replace(/\n/g, '<br>');
+    }
+
+    msg.innerHTML = contentHTML;
+    msgBox.appendChild(msg);
+    msgBox.scrollTop = msgBox.scrollHeight;
+    input.value = "";
+    sendBtn.disabled = false;
+}
+
+// Adiciona animação de "digitando"
+function addTyping() {
+    let msg = document.createElement("div");
+    msg.classList.add("msg", "bot-msg", "typing-msg");
+    msg.innerHTML = '<span class="typing"></span><span class="typing"></span><span class="typing"></span>';
+    msgBox.appendChild(msg);
+    msgBox.scrollTop = msgBox.scrollHeight;
+}
+
+// Remove animação de "digitando"
+function removeTyping() {
+    const typingMsg = document.querySelector(".typing-msg");
+    if (typingMsg) {
+        typingMsg.remove();
+    }
+}
+
+// Obtém o histórico de mensagens, formatando para OpenAI/Gemini
+function getHistory() {
+    const messages = [];
+    const chatMsgs = msgBox.querySelectorAll(".msg:not(.typing-msg)");
+
+    chatMsgs.forEach(msg => {
+        const role = msg.classList.contains('user-msg') ? 'user' : 'assistant';
+        const content = msg.textContent.trim();
+        if (content) {
+            messages.push({ role, content });
+        }
+    });
+
+    return messages;
+}
+
+
+// ==========================================================
+//             FUNÇÃO DE REQUISIÇÃO GEMINI (FALLBACK)
+
+
+async function callGemini(history, local_data_context, geminiKey) {
+    if (!geminiKey) {
+        console.error("GEMINI_API_KEY não configurada. Não foi possível tentar o fallback Gemini.");
+        return null;
+    }
+    
+    // Cria a URL do Gemini com a chave dinâmica
+    const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent?key=' + geminiKey;
+
+    try {
+        // Formato Gemini: model/user
+        let geminiContents = [];
+        
+        // Adiciona o prompt de sistema como a primeira mensagem
+        geminiContents.push({
+            role: 'user',
+            parts: [{ text: SYSTEM_PROMPT }]
+        });
+        geminiContents.push({
+            role: 'model',
+            parts: [{ text: "Ok, entendi todas as regras. Sou a Carol, e estou pronta para ajudar com as dúvidas sobre precificação e o dashboard." }]
+        });
+
+
+        // Adiciona o histórico de chat existente, adaptando os roles
+        history.forEach(msg => {
+            const role = msg.role === 'assistant' ? 'model' : 'user';
+            geminiContents.push({
+                role: role,
+                parts: [{ text: msg.content }]
+            });
+        });
+
+        // Adiciona o contexto de dados locais no final da última mensagem do usuário (ou como nova mensagem)
+        const lastUserMsgIndex = geminiContents.length - 1;
+        if (local_data_context && geminiContents[lastUserMsgIndex]) {
+            // Assume que a última mensagem é a do usuário que acabou de ser enviada.
+            const userTextWithContext = geminiContents[lastUserMsgIndex].parts[0].text + local_data_context;
+            geminiContents[lastUserMsgIndex].parts[0].text = userTextWithContext;
+        }
+
+        const response = await fetch(GEMINI_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                contents: geminiContents,
+            })
+        });
+
+        if (!response.ok) {
+            console.error("Erro na API Gemini:", response.status, await response.text());
+            return null; // Falha na resposta HTTP
+        }
+
+        const data = await response.json();
+        
+        // Verifica se há texto de resposta
+        return data.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
+
+    } catch (e) {
+        console.error("Falha total na conexão Gemini (Catch):", e);
+        return null; // Falha total (rede, CORS, etc.)
+    }
+}
+
+
+
+// FUNÇÃO PRINCIPAL DE ENVIO (Com Fallback)
+
+async function sendToAI(text, dbCodigos, dbCodigosBarras) {
+    sendBtn.disabled = true;
+    removeTyping(); 
+    addTyping();
+    
+    // 1. Obtém as chaves de API do Local Storage
+    const keys = getAiKeys();
+    const OPENAI_API_KEY = keys.OPENAI_API_KEY;
+    const GEMINI_API_KEY = keys.GEMINI_API_KEY;
+
+    // 2. Geração do Contexto de Dados Locais
+    let local_data_context = "";
+    if (dbCodigos && Object.keys(dbCodigos).length > 0) {
+        local_data_context += "\n\n[CONTEXTO DE DADOS LOCAIS - CUSTOS GLOBAIS]\n";
+        local_data_context += JSON.stringify(dbCodigos, null, 2);
+        local_data_context += "\n[/CONTEXTO DE DADOS LOCAIS - CUSTOS GLOBAIS]\n";
+    }
+    if (dbCodigosBarras && dbCodigosBarras.length > 0) {
+        const barcode_status_map = dbCodigosBarras.reduce((acc, item) => {
+            if(item.code && item.status) { acc[item.code] = item.status; }
+            return acc;
+        }, {});
+        local_data_context += "\n\n[CONTEXTO DE CÓDIGOS DE BARRAS (Código: Status)]\n";
+        local_data_context += JSON.stringify(barcode_status_map, null, 2);
+        local_data_context += "\n[/CONTEXTO DE CÓDIGOS DE BARRAS (Código: Status)]\n";
+    }
+    
+    // Obtém o histórico para ambas as APIs
+    const history = getHistory();
+
+    // 3. TENTA OPENAI (API Primária)
+    if (OPENAI_API_KEY) {
+        try {
+            const messages = [
+                { role: "system", content: SYSTEM_PROMPT },
+                ...history.map(msg => ({ role: msg.role, content: msg.content }))
+            ];
+
+            // Adiciona o contexto de dados à última mensagem do usuário
+            messages.push({ role: "user", content: text + local_data_context });
+            
+            const r = await fetch(OPENAI_URL, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    model: "gpt-3.5-turbo", // Modelo padrão para OpenAI
+                    messages: messages
+                })
+            });
+
+            if (!r.ok) {
+                // Lança um erro forçado para que o bloco 'catch' tente o Gemini
+                const errorBody = await r.text();
+                throw new Error(`OpenAI request failed with status: ${r.status}. Body: ${errorBody}`);
+            }
+
+            const data = await r.json();
+            const ai = data.choices?.[0]?.message?.content ?? "Erro ao responder (OpenAI).";
+            
+            removeTyping();
+            addMsg(ai, "bot");
+            sendBtn.disabled = false;
+            return; // SUCESSO com OpenAI, encerra a função
+
+        } catch (e) {
+            console.warn("Falha primária (OpenAI). Tentando Gemini como fallback.", e);
+            // Segue para o bloco do Gemini
+        }
+    } else {
+        console.warn("Chave OpenAI não configurada. Tentando Gemini diretamente.");
+    }
+    
+    // 4. TENTA GEMINI (O Fallback)
+    const aiFallback = await callGemini(history, local_data_context, GEMINI_API_KEY); 
+
+    removeTyping();
+
+    if (aiFallback) {
+        addMsg(aiFallback, "bot"); // Resposta bem-sucedida do Gemini
+    } else if (!OPENAI_API_KEY && !GEMINI_API_KEY) {
+        addMsg("As chaves de API para OpenAI e Gemini não estão configuradas. Por favor, acesse o link <b>Configurações</b> no menu lateral e salve as chaves.", "bot");
+    } else {
+         // Se o Gemini também falhar, mostra o erro final
+         addMsg("Erro duplo. Falha ao conectar com OpenAI e Gemini (Verifique suas chaves e o console).", "bot");
+    }
+    sendBtn.disabled = false;
+}
+
+
+
+/**
+ * Escapa caracteres HTML para prevenir ataques XSS.
+ * @param {string} unsafe - String de entrada do usuário.
+ * @returns {string} - String com caracteres HTML escapados.
+ */
+function escapeHtml(unsafe) {
+    return unsafe
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+}
+
+
+/* Envio de mensagem */
+sendBtn.onclick = () => {
+    const rawText = input.value;
+
+    if (!rawText.trim()) return; 
+
+    const safeText = escapeHtml(rawText);
+
+    addMsg(safeText, "user"); 
+    
+    // 3. Atualiza os dados locais a partir do localStorage antes de enviar
+    global_costs = JSON.parse(localStorage.getItem('dbCodigos_global') || '{}');
+    barcode_data = JSON.parse(localStorage.getItem('barcodeDB_v2') || '[]');
+
+    sendToAI(safeText, global_costs, barcode_data); 
+}
+
+// Envio por Enter
+input.addEventListener("keypress", function(event) {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        sendBtn.click();
+    }
+});
+
+/* ================= FECHAR CHAT AO CLICAR FORA (TUDO) ================ */
+document.addEventListener('click', function(event) {
+  const isClickInsideToggle = chatBtn.contains(event.target);
+  const isClickInsideWindow = chatWindow.contains(event.target);
+  const isWindowOpen = chatWindow.style.display === "flex";
+
+  // Se o clique não foi dentro do botão E não foi dentro da janela E a janela está aberta, fecha essa porra
+  if (!isClickInsideToggle && !isClickInsideWindow && isWindowOpen) {
+    chatWindow.style.display = "none";
+  }
+});
+</script>
+
+<style>
+/* CHATBOT CAROL – estilos adicionais */
+#chatbot-toggle { position: fixed; bottom: 25px; right: 25px; width: 60px; height: 60px; background: #6366f1; color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 26px; cursor: pointer; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.25); z-index: 99999; }
+#chatbot-window { position: fixed; bottom: 100px; right: 25px; width: 320px; height: 470px; background: #fff; border-radius: 14px; display: none; flex-direction: column; overflow: hidden; box-shadow: 0 8px 18px rgba(0,0,0,0.25); z-index: 99999; }
+#chatbot-header { background: #6366f1; color: white; padding: 10px; display: flex; align-items: center; gap: 10px; font-weight: bold; justify-content: space-between; }
+#chatbot-header span { flex: 1; text-align: left; }
+.chatbot-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; }
+#chatbot-clear { background: transparent; border: none; font-size: 18px; cursor: pointer; color: white; }
+#chatbot-messages { flex: 1; padding: 12px; overflow-y: auto; background: #f5f5f7; }
+.msg { padding: 10px; margin-bottom: 10px; font-size: 14px; border-radius: 10px; max-width: 85%; }
+.user-msg { background: #6366f1; color: white; margin-left: auto; }
+.bot-msg { background: #e5e7eb; color: #111; margin-right: auto; }
+/* typing animation */
+.typing { display: inline-block; width: 6px; height: 6px; background: #444; border-radius: 50%; margin-right: 3px; animation: blink 1.2s infinite; }
+.typing:nth-child(2) { animation-delay: .2s; }
+.typing:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%, 80%, 100% { opacity: .2; } 40% { opacity: 1; } }
+#chatbot-input-area { display: flex; border-top: 1px solid #ddd; }
+#chatbot-input { flex: 1; padding: 10px; border: none; outline: none; }
+#chatbot-send { width: 60px; background: #6366f1; color: white; border: none; cursor: pointer; }
+</style>
+
+</body>
+</html>

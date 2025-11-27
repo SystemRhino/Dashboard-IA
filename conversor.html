@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Conversor + Editor Avançado (Preview ↔ Resultados)</title>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <style>
+    /* Tema Claro - Cores atualizadas */
+    :root{
+      --bg: #f8fafd; /* Fundo muito claro */
+      --card: #ffffff; /* Fundo do card branco */
+      --accent: #06b6d4; /* Destaque (ciano) */
+      --muted: #64748b; /* Texto secundário (cinza escuro) */
+      --glass: rgba(0,0,0,0.03); /* Efeito de vidro leve (escuro transparente) */
+      --success:#10b981;
+      --text: #0f172a; /* Texto principal (muito escuro) */
+      --input-bg: rgba(0,0,0,0.05); /* Fundo de inputs e selects */
+      --border: rgba(0,0,0,0.08); /* Borda mais suave */
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+      background:linear-gradient(180deg,var(--bg),#e6edf4); /* Gradiente de fundo claro */
+      color:var(--text); /* Texto escuro */
+      padding:18px;
+    }
+    h1{margin:0 0 18px 0; text-align:center; color:var(--accent)}
+    .app{max-width:1200px; margin:0 auto}
+    .layout{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:18px;
+    }
+    @media (max-width:900px){ .layout{grid-template-columns:1fr} }
+
+    /* cards */
+    .card{
+      background: var(--card);
+      border-radius:12px; padding:14px;
+      border:1px solid var(--border);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08); /* Sombra mais sutil */
+    }
+    .section-title{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px}
+    .section-title h2{margin:0; font-size:18px; color:var(--accent)}
+
+    /* upload area */
+    .upload-area{
+      border:2px dashed rgba(6,182,212,0.5); /* Borda dashed mais visível */
+      border-radius:10px; padding:14px; text-align:center; cursor:pointer;
+      transition:transform .12s, box-shadow .12s;
+      background:var(--glass);
+    }
+    .upload-area.dragover{ box-shadow: 0 0 20px rgba(6,182,212,0.25); transform:scale(1.01) }
+    .file-input-wrapper{
+      display:inline-block; position:relative; padding:8px 14px; border-radius:8px;
+      background:var(--accent); color:white; /* Botão de arquivo com fundo de destaque e texto branco */
+      font-weight:700; cursor:pointer;
+      box-shadow:0 6px 18px rgba(6,182,212,0.2);
+    }
+    .file-input-wrapper input{ position:absolute; left:0; top:0; width:100%; height:100%; opacity:0; cursor:pointer }
+
+    /* controls */
+    .controls{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px }
+    select,input[type=range]{
+      padding:8px 10px; border-radius:8px; border:1px solid var(--border);
+      background:var(--input-bg);
+      color:var(--text); /* Cor do texto no input escuro */
+    }
+    button{ padding:9px 12px; background:var(--accent); color:white; border:none; border-radius:8px; cursor:pointer; font-weight:700 }
+    button.ghost{
+      background:transparent;
+      color:var(--accent);
+      border:1px solid var(--accent); /* Borda colorida */
+    }
+
+    /* galleries */
+    .preview-gallery, .result-gallery{
+      display:grid; grid-template-columns: repeat(auto-fill,minmax(140px,1fr)); gap:12px; margin-top:10px;
+    }
+    .thumb-card{
+      background: var(--input-bg); /* Fundo claro para o card de miniatura */
+      padding:10px; border-radius:8px; position:relative; overflow:hidden;
+      display:flex; flex-direction:column; gap:8px; align-items:center;
+      border:1px solid var(--border);
+    }
+    .thumb-card img{ width:100%; height:110px; object-fit:cover; border-radius:6px; display:block }
+    .thumb-meta{ width:100%; font-size:12px; color:var(--muted); display:flex; justify-content:space-between; align-items:center; gap:8px }
+    .icon-btn{ background:var(--accent); color:white; border:none; width:34px; height:34px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; cursor:pointer }
+
+    /* editor modal */
+    .modal{ position:fixed; left:0; top:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.6); z-index:60; }
+    .modal-card{ width:90%; max-width:1000px; background:var(--card); /* Fundo do modal claro */ color:var(--text); border-radius:10px; padding:12px; position:relative; }
+    .editor-img{ max-width:100%; max-height:60vh; display:block; margin:0 auto; position:relative; }
+
+    /* watermark overlay (draggable + handles) */
+    #watermarkOverlay{
+      position:absolute;
+      top:90px;
+      left:90px;
+      max-width:220px;
+      cursor:move;
+      user-select:none;
+      pointer-events:auto;
+      display:none;
+      transform-origin: top left;
+      z-index:70;
+      border:2px dashed rgba(0,0,0,0.2); /* Borda mais escura para o tema claro */
+      border-radius:4px;
+      background:rgba(255,255,255,0.4); /* Fundo claro e transparente */
+    }
+    /* handle (resize) */
+    #watermarkHandle {
+      position:absolute;
+      width:14px;height:14px;border-radius:7px;
+      right:-8px; bottom:-8px; background:var(--accent); cursor:se-resize; z-index:75;
+      border:2px solid rgba(255,255,255,0.7); /* Borda clara */
+    }
+    /* rotate handle */
+    #watermarkRotateHandle {
+      position:absolute;
+      width:14px;height:14px;border-radius:7px;
+      right:-8px; top:-28px; background:#ffd166; cursor:pointer; z-index:75;
+      border:2px solid rgba(255,255,255,0.7); /* Borda clara */
+    }
+
+    /* filters */
+    .filters{ display:flex; gap:8px; flex-wrap:wrap; align-items:center }
+
+    /* progress */
+    .progress-wrap{ margin-top:10px; background:var(--input-bg); border-radius:8px; overflow:hidden; height:12px }
+    .progress-bar{ height:100%; width:0%; background:linear-gradient(90deg,var(--accent), #32d4e6); transition:width .2s }
+
+    /* small */
+    .muted{ color:var(--muted); font-size:13px }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>Conversor + Editor Avançado</h1>
+
+    <div class="layout">
+      <div class="card">
+        <div class="section-title">
+          <h2>Upload & Pré-visualização</h2>
+          <div class="muted">Preview à esquerda • Resultados à direita</div>
+        </div>
+
+        <div id="uploadArea" class="upload-area">
+          <div style="display:flex; gap:12px; align-items:center; justify-content:center; flex-wrap:wrap">
+            <label class="file-input-wrapper">
+              📁 Selecionar imagens
+              <input id="fileInput" type="file" accept="image/*" multiple>
+            </label>
+
+            <div class="muted">ou arraste e solte aqui</div>
+          </div>
+
+          <div class="controls" style="margin-top:12px">
+            <label>Formato final:
+              <select id="outputFormat"></select>
+            </label>
+
+            <label>Qualidade:
+              <input id="quality" type="range" min="0.1" max="1" step="0.05" value="0.9">
+            </label>
+            <span id="qLabel" class="muted">0.90</span>
+
+            <label>Brilho
+              <input id="filterBrightness" type="range" min="0.2" max="2" step="0.05" value="1">
+            </label>
+            <label>Contraste
+              <input id="filterContrast" type="range" min="0.2" max="2" step="0.05" value="1">
+            </label>
+            <label>Saturação
+              <input id="filterSaturate" type="range" min="0" max="2" step="0.05" value="1">
+            </label>
+          </div>
+
+          <div class="controls" style="margin-top:10px">
+            <button id="openEditorBtn" class="ghost">✂️ Abrir editor (primeira)</button>
+            <button id="convertBtn">▶ Converter</button>
+            <button id="clearQueueBtn" class="ghost">🧹 Limpar fila</button>
+          </div>
+
+          <div class="progress-wrap" style="display:none; margin-top:10px">
+            <div id="progressBar" class="progress-bar"></div>
+          </div>
+
+        </div>
+
+        <div class="section-title" style="margin-top:12px">
+          <h2>Pré-visualização</h2>
+          <div class="muted" id="previewCount">0 imagem(s)</div>
+        </div>
+
+        <div id="previewGallery" class="preview-gallery"></div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <h2>Resultados (Convertidas)</h2>
+          <div class="muted" id="resultCount">0</div>
+        </div>
+
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px">
+          <button id="downloadZipBtn" class="ghost" disabled>⬇️ Baixar tudo (.zip)</button>
+          <button id="clearResultsBtn" class="ghost">🧹 Limpar convertidas</button>
+          <div style="flex:1"></div>
+          <div class="muted">Tamanho e download</div>
+        </div>
+
+        <div id="resultGallery" class="result-gallery"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="editorModal" class="modal" style="display:none">
+    <div class="modal-card" id="modalCard">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <h3 style="margin:0;color:var(--accent)">Editor (primeira imagem)</h3>
+        <div>
+          Largura: <input id="resizeW" type="number" style="width:80px;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--input-bg);color:var(--text)">
+          Altura: <input id="resizeH" type="number" style="width:80px;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--input-bg);color:var(--text)">
+          <button id="applyCropBtn" style="margin-left:8px">Aplicar</button>
+          <button id="closeEditorBtn" class="ghost">Fechar</button>
+        </div>
+      </div>
+      <hr style="border:none;height:10px" />
+
+      <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
+        <label style="font-weight:600; color:var(--text);">Adicionar marca d'água:</label>
+        <input id="watermarkInput" type="file" accept="image/*">
+        <label style="margin-left:10px">Rotação:
+          <input id="watermarkRotate" type="range" min="-180" max="180" value="0">
+        </label>
+        <span class="muted" style="margin-left:6px" id="wmRotateLabel">0°</span>
+
+        <label style="margin-left:12px">Opacidade:
+          <input id="watermarkOpacity" type="range" min="0" max="1" step="0.05" value="1">
+        </label>
+
+        <div style="margin-left:12px" class="muted">Redimensione com a roda do mouse sobre a marca d'água ou use o handle</div>
+      </div>
+
+      <img id="editorImage" class="editor-img" crossorigin="anonymous" />
+      <div id="watermarkOverlay">
+        <img id="watermarkImg" src="" alt="Marca d'água" style="display:block; width:100%; height:auto; pointer-events:none;">
+        <div id="watermarkHandle"></div>
+        <div id="watermarkRotateHandle" title="Rotate"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ---------- Globals ----------
+    const FORMATS = ['png','jpeg','jpg','webp'];
+    const fileInput = document.getElementById('fileInput');
+    const uploadArea = document.getElementById('uploadArea');
+    const previewGallery = document.getElementById('previewGallery');
+    const resultGallery = document.getElementById('resultGallery');
+    const outputFormat = document.getElementById('outputFormat');
+    const qualityEl = document.getElementById('quality');
+    const qLabel = document.getElementById('qLabel');
+    const filterB = document.getElementById('filterBrightness');
+    const filterC = document.getElementById('filterContrast');
+    const filterS = document.getElementById('filterSaturate');
+    const openEditorBtn = document.getElementById('openEditorBtn');
+    const editorModal = document.getElementById('editorModal');
+    const editorImage = document.getElementById('editorImage');
+    const applyCropBtn = document.getElementById('applyCropBtn');
+    const closeEditorBtn = document.getElementById('closeEditorBtn');
+    const resizeW = document.getElementById('resizeW');
+    const resizeH = document.getElementById('resizeH');
+    const convertBtn = document.getElementById('convertBtn');
+    const clearQueueBtn = document.getElementById('clearQueueBtn');
+    const clearResultsBtn = document.getElementById('clearResultsBtn');
+    const downloadZipBtn = document.getElementById('downloadZipBtn');
+    const progressWrap = document.querySelector('.progress-wrap');
+    const progressBar = document.getElementById('progressBar');
+    const previewCount = document.getElementById('previewCount');
+    const resultCount = document.getElementById('resultCount');
+
+    const watermarkInput = document.getElementById('watermarkInput');
+    const watermarkOverlay = document.getElementById('watermarkOverlay');
+    const watermarkImg = document.getElementById('watermarkImg');
+    const watermarkHandle = document.getElementById('watermarkHandle');
+    const watermarkRotate = document.getElementById('watermarkRotate');
+    const watermarkRotateHandle = document.getElementById('watermarkRotateHandle');
+    const wmRotateLabel = document.getElementById('wmRotateLabel');
+    const watermarkOpacity = document.getElementById('watermarkOpacity');
+    const modalCard = document.getElementById('modalCard');
+
+    let files = []; // original File objects queued
+    let editedFirstFile = null; // File after crop applied (replaces files[0])
+    let cropper = null;
+    let convertedFiles = []; // {name, blob, size}
+
+    // watermark state
+    let wmVisible = false;
+    let wmScale = 1;
+    let wmRot = 0; // degrees
+    let wmDragging = false;
+    let wmOffsetX = 0;
+    let wmOffsetY = 0;
+    let wmResizing = false;
+    let wmStartW = 0, wmStartMouseX = 0;
+
+    // ---------- Init ----------
+    function initOutputFormats(){
+      outputFormat.innerHTML = FORMATS.map(f => `<option value="${f}">${f.toUpperCase()}</option>`).join('');
+    }
+    initOutputFormats();
+    qLabel.textContent = parseFloat(qualityEl.value).toFixed(2);
+
+    // ---------- Helpers ----------
+    function humanSize(bytes){
+      if (!bytes) return '0 B';
+      const k=1024; const sizes=['B','KB','MB','GB'];
+      const i=Math.floor(Math.log(bytes)/Math.log(k));
+      return (bytes/Math.pow(k,i)).toFixed(2)+' '+sizes[i];
+    }
+
+    function loadImage(src){
+      return new Promise((resolve,reject)=>{
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = ()=> resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+
+    // ---------- Drag & Drop ----------
+    uploadArea.addEventListener('dragover', (e)=>{ e.preventDefault(); uploadArea.classList.add('dragover') });
+    uploadArea.addEventListener('dragleave', ()=> uploadArea.classList.remove('dragover'));
+    uploadArea.addEventListener('drop', (e)=>{ e.preventDefault(); uploadArea.classList.remove('dragover'); handleFiles(e.dataTransfer.files) });
+
+    fileInput.addEventListener('change', (e)=> handleFiles(e.target.files));
+
+    function handleFiles(fileList){
+      const arr = Array.from(fileList);
+      for (const f of arr){
+        if (!f.type.startsWith('image/')) continue;
+        // avoid duplicates by name+size
+        const exists = files.some(x => x.name===f.name && x.size===f.size);
+        if (!exists) files.push(f);
+      }
+      renderPreview();
+      updateFormatOptions();
+    }
+
+    // ---------- Preview (left) ----------
+    function renderPreview(){
+      previewGallery.innerHTML = '';
+      previewCount.textContent = `${files.length} imagem(ns)`;
+      files.forEach((f, idx) => {
+        const url = URL.createObjectURL(f);
+        const card = document.createElement('div'); card.className='thumb-card';
+        card.innerHTML = `
+          <img src="${url}" alt="${f.name}" style="filter: brightness(${filterB.value}) contrast(${filterC.value}) saturate(${filterS.value});">
+          <div class="thumb-meta">
+            <div style="font-size:13px;word-break:break-all">${f.name}</div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <div class="muted" title="tamanho">${humanSize(f.size)}</div>
+              <button class="icon-btn" title="Remover" data-idx="${idx}">✖</button>
+            </div>
+          </div>
+        `;
+        previewGallery.appendChild(card);
+
+        // remove handler
+        card.querySelector('[data-idx]').addEventListener('click', (ev)=>{
+          const i = Number(ev.currentTarget.dataset.idx);
+          files.splice(i,1);
+          if (i===0) editedFirstFile = null; // if first removed, remove edited
+          renderPreview(); updateFormatOptions();
+        });
+
+        // revoke objectURL after image loads
+        card.querySelector('img').addEventListener('load', ()=> URL.revokeObjectURL(url));
+      });
+    }
+
+    // ---------- Remove format options that already exist in queue ----------
+    function updateFormatOptions(){
+      outputFormat.innerHTML = FORMATS.map(f=> `<option value="${f}">${f.toUpperCase()}</option>`).join('');
+      if (!files.length){
+        return;
+      }
+      const used = new Set();
+      files.forEach(f => {
+        let ext = f.name.split('.').pop().toLowerCase();
+        if (ext==='jpeg') ext='jpg';
+        used.add(ext);
+      });
+      used.forEach(ext=>{
+        const opt = outputFormat.querySelector(`option[value="${ext}"]`);
+        if (opt) opt.remove();
+      });
+      if (!outputFormat.children.length){
+        outputFormat.innerHTML = `<option disabled>Nenhum formato disponível</option>`;
+      }
+    }
+
+    // ---------- Editor (Cropper) ----------
+    openEditorBtn.addEventListener('click', ()=>{
+      if (!files.length){ return; }
+      const first = files[0];
+      editedFirstFile = null;
+      editorImage.src = URL.createObjectURL(first);
+      editorModal.style.display = 'flex';
+      setTimeout(()=>{ // ensure loaded
+        if (cropper) { cropper.destroy(); cropper = null; }
+        cropper = new Cropper(editorImage, { viewMode:1, autoCropArea:1 });
+        // place watermark in modal relative position if visible
+        positionWatermarkInitial();
+      }, 120);
+    });
+
+    closeEditorBtn.addEventListener('click', ()=> {
+      if (cropper){ cropper.destroy(); cropper = null; }
+      editorModal.style.display = 'none';
+      editorImage.src = '';
+      // keep watermark data (so user can re-open)
+    });
+
+    // ---------- Watermark: load file ----------
+    watermarkInput.addEventListener('change', async (e)=>{
+      const f = e.target.files[0];
+      if (!f) return;
+      const url = URL.createObjectURL(f);
+      watermarkImg.src = url;
+
+      // wait for natural size
+      await loadImage(url);
+      watermarkOverlay.style.display = 'block';
+      wmVisible = true;
+      wmScale = 1;
+      wmRot = 0;
+      watermarkOverlay.style.width = Math.min(220, watermarkImg.naturalWidth) + 'px';
+      watermarkOverlay.style.left = '60px';
+      watermarkOverlay.style.top = '60px';
+      watermarkImg.style.opacity = watermarkOpacity.value;
+      watermarkOverlay.style.transform = `scale(${wmScale}) rotate(${wmRot}deg)`;
+      wmRotateLabel.textContent = `${wmRot}°`;
+    });
+
+    function positionWatermarkInitial(){
+      if (!wmVisible) return;
+      // ensure watermark inside modalCard
+      const rect = modalCard.getBoundingClientRect();
+      // place slightly offset (if not already positioned)
+      if (!watermarkOverlay.style.left || !watermarkOverlay.style.top) {
+        watermarkOverlay.style.left = '60px';
+        watermarkOverlay.style.top = '60px';
+      }
+    }
+
+    // ---------- Watermark drag ----------
+    watermarkOverlay.addEventListener('mousedown', (e)=>{
+      if (e.target === watermarkHandle || e.target === watermarkRotateHandle) return; // resize or rotate
+      e.preventDefault();
+      wmDragging = true;
+      const wmRect = watermarkOverlay.getBoundingClientRect();
+      wmOffsetX = e.clientX - wmRect.left;
+      wmOffsetY = e.clientY - wmRect.top;
+    });
+
+    document.addEventListener('mouseup', ()=> { wmDragging = false; wmResizing = false; });
+
+    document.addEventListener('mousemove', (e)=>{
+      if (!wmDragging && !wmResizing) return;
+      const modalRect = modalCard.getBoundingClientRect();
+
+      if (wmDragging) {
+        let left = e.clientX - modalRect.left - wmOffsetX;
+        let top = e.clientY - modalRect.top - wmOffsetY;
+        left = Math.max(-200, Math.min(left, modalRect.width - 40));
+        top = Math.max(-200, Math.min(top, modalRect.height - 40));
+        watermarkOverlay.style.left = left + 'px';
+        watermarkOverlay.style.top = top + 'px';
+      }
+
+      if (wmResizing) {
+        let dx = e.clientX - wmStartMouseX;
+        let newW = Math.max(20, wmStartW + dx);
+        watermarkOverlay.style.width = newW + 'px';
+      }
+    });
+
+    // resize handle
+    watermarkHandle.addEventListener('mousedown', (e)=>{
+      e.stopPropagation();
+      wmResizing = true;
+      wmStartMouseX = e.clientX;
+      wmStartW = watermarkOverlay.offsetWidth;
+    });
+
+    // wheel to zoom
+    watermarkOverlay.addEventListener('wheel', (e)=>{
+      if (!wmVisible) return;
+      e.preventDefault();
+      const delta = -e.deltaY;
+      wmScale += delta * 0.0015;
+      if (wmScale < 0.1) wmScale = 0.1;
+      if (wmScale > 5) wmScale = 5;
+      watermarkOverlay.style.transform = `scale(${wmScale}) rotate(${wmRot}deg)`;
+    });
+
+    // rotate handle or slider (slider)
+    watermarkRotate.addEventListener('input', ()=>{
+      wmRot = parseFloat(watermarkRotate.value) || 0;
+      watermarkOverlay.style.transform = `scale(${wmScale}) rotate(${wmRot}deg)`;
+      wmRotateLabel.textContent = `${wmRot}°`;
+    });
+    // optional rotate handle dragging (basic)
+    let rotating = false, rotStartX=0, rotStartY=0, startRot=0;
+    watermarkRotateHandle.addEventListener('mousedown', (e)=>{
+      e.stopPropagation();
+      rotating = true;
+      rotStartX = e.clientX;
+      rotStartY = e.clientY;
+      startRot = wmRot;
+    });
+    document.addEventListener('mouseup', ()=> rotating = false);
+    document.addEventListener('mousemove', (e)=>{
+      if (!rotating) return;
+      // compute simple rotation based on horizontal delta
+      const dx = e.clientX - rotStartX;
+      wmRot = startRot + dx * 0.25;
+      watermarkRotate.value = wmRot;
+      watermarkOverlay.style.transform = `scale(${wmScale}) rotate(${wmRot}deg)`;
+      wmRotateLabel.textContent = `${Math.round(wmRot)}°`;
+    });
+
+    // opacity slider
+    watermarkOpacity.addEventListener('input', ()=>{
+      watermarkImg.style.opacity = watermarkOpacity.value;
+    });
+
+    // ---------- apply crop (with filters + watermark) ----------
+    applyCropBtn.addEventListener('click', async ()=>{
+      if (!cropper){ return; }
+      const w = parseInt(resizeW.value) || undefined;
+      const h = parseInt(resizeH.value) || undefined;
+      const baseCanvas = cropper.getCroppedCanvas(w && h ? { width:w, height:h } : undefined);
+      if (!baseCanvas){ return; }
+
+      // new canvas to apply filters + watermark
+      const finalCanvas = document.createElement('canvas');
+      finalCanvas.width = baseCanvas.width;
+      finalCanvas.height = baseCanvas.height;
+      const ctx = finalCanvas.getContext('2d');
+
+      // apply filters
+      ctx.filter = `brightness(${filterB.value}) contrast(${filterC.value}) saturate(${filterS.value})`;
+      ctx.drawImage(baseCanvas, 0, 0);
+
+      // apply watermark if visible
+      if (wmVisible && watermarkImg.src) {
+        try {
+          // compute mapping from watermark overlay position (in modal) to finalCanvas coordinates
+          const editorRect = editorImage.getBoundingClientRect();
+          const baseWidth = baseCanvas.width;
+          const baseHeight = baseCanvas.height;
+
+          const modalRect = modalCard.getBoundingClientRect();
+          const wmRect = watermarkOverlay.getBoundingClientRect();
+
+          // position of watermark relative to displayed editor image (may be negative if outside)
+          const relX = wmRect.left - editorRect.left;
+          const relY = wmRect.top - editorRect.top;
+
+          // scale factors between displayed editor image and canvas pixel size
+          const scaleX = baseWidth / editorRect.width;
+          const scaleY = baseHeight / editorRect.height;
+
+          // displayed size of watermark (width*scale)
+          const displayedW = watermarkOverlay.offsetWidth * wmScale;
+          const displayedH = watermarkImg.naturalHeight * (displayedW / watermarkImg.naturalWidth);
+
+          // map to canvas coordinates
+          const canvasX = relX * scaleX;
+          const canvasY = relY * scaleY;
+          const canvasW = displayedW * scaleX;
+          const canvasH = displayedH * scaleY;
+
+          // draw with rotation and opacity
+          const image = await loadImage(watermarkImg.src);
+          const angleRad = wmRot * Math.PI / 180;
+
+          const cx = canvasX + canvasW / 2;
+          const cy = canvasY + canvasH / 2;
+
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(angleRad);
+          ctx.globalAlpha = parseFloat(watermarkOpacity.value);
+          ctx.drawImage(image, -canvasW/2, -canvasH/2, canvasW, canvasH);
+          ctx.globalAlpha = 1;
+          ctx.restore();
+        } catch (err) {
+          console.error('Erro ao aplicar watermark no canvas', err);
+        }
+      }
+
+      // export final canvas to blob and replace first file
+      finalCanvas.toBlob(blob=>{
+        const name = files[0].name;
+        editedFirstFile = new File([blob], name, { type: blob.type });
+        files[0] = editedFirstFile;
+        renderPreview();
+        updateFormatOptions();
+        // close editor
+        if (cropper){ cropper.destroy(); cropper = null; }
+        editorModal.style.display = 'none';
+      }, 'image/png', 0.95);
+    });
+
+    // ---------- Filters live preview on thumbnail (applies visually only to preview thumbnails) ----------
+    [filterB,filterC,filterS].forEach(el=>{
+      el.addEventListener('input', ()=>{
+        const imgs = previewGallery.querySelectorAll('img');
+        imgs.forEach(img => {
+          img.style.filter = `brightness(${filterB.value}) contrast(${filterC.value}) saturate(${filterS.value})`;
+        });
+      });
+    });
+
+    // quality label
+    qualityEl.addEventListener('input', ()=> qLabel.textContent = parseFloat(qualityEl.value).toFixed(2));
+
+    // ---------- Clear queue (no alert) ----------
+    clearQueueBtn.addEventListener('click', ()=>{
+      files = []; editedFirstFile = null;
+      renderPreview(); updateFormatOptions();
+    });
+
+    // ---------- Clear results (no alert) ----------
+    clearResultsBtn.addEventListener('click', ()=>{
+      convertedFiles = [];
+      resultGallery.innerHTML = '';
+      resultCount.textContent = '0';
+      downloadZipBtn.disabled = true;
+    });
+
+    // ---------- Conversion ----------
+    convertBtn.addEventListener('click', ()=> startConversion());
+
+    async function startConversion(){
+      if (!files.length){ return; }
+      const fmt = (outputFormat.value || '').toLowerCase();
+      if (!fmt || outputFormat.options.length===0){ return; }
+
+      // reset
+      convertedFiles = [];
+      resultGallery.innerHTML = '';
+      resultCount.textContent = '0';
+      downloadZipBtn.disabled = true;
+
+      const zip = new JSZip();
+      progressWrap.style.display='block';
+      progressBar.style.width='0%';
+
+      const total = files.length;
+      let done = 0;
+
+      for (let i=0;i<files.length;i++){
+        const f = files[i];
+        const origExt = f.name.split('.').pop().toLowerCase();
+        const normalizedOrig = origExt==='jpeg' ? 'jpg' : origExt;
+        if (fmt === normalizedOrig || (fmt==='jpeg' && normalizedOrig==='jpg') || (fmt==='jpg' && normalizedOrig==='jpeg')){
+          done++; progressBar.style.width = `${Math.round(done/total*100)}%`; continue;
+        }
+
+        try {
+          // create bitmap
+          const imgBitmap = await createImageBitmap(f);
+          const canvas = document.createElement('canvas');
+          canvas.width = imgBitmap.width;
+          canvas.height = imgBitmap.height;
+          const ctx = canvas.getContext('2d');
+          ctx.filter = `brightness(${filterB.value}) contrast(${filterC.value}) saturate(${filterS.value})`;
+          ctx.drawImage(imgBitmap,0,0);
+
+          // toBlob
+          const mime = `image/${fmt==='jpg' ? 'jpeg' : fmt}`;
+          const quality = parseFloat(qualityEl.value);
+          const blob = await new Promise(resolve => canvas.toBlob(resolve, mime, quality));
+          if (!blob) throw new Error('Falha ao gerar blob');
+
+          const outName = f.name.replace(/\.[^.]+$/, `.${fmt}`);
+          convertedFiles.push({ name: outName, blob, size: blob.size });
+          zip.file(outName, blob);
+
+          // show result
+          const url = URL.createObjectURL(blob);
+          const card = document.createElement('div'); card.className='thumb-card';
+          card.innerHTML = `
+            <img src="${url}" alt="${outName}">
+            <div class="thumb-meta">
+              <div style="font-size:13px;word-break:break-word">${outName}</div>
+              <div style="display:flex;gap:6px;align-items:center">
+                <div class="muted" title="tamanho">${humanSize(blob.size)}</div>
+                <button class="icon-btn" title="Baixar" data-url="${url}" data-name="${outName}">⬇</button>
+              </div>
+            </div>
+          `;
+          resultGallery.appendChild(card);
+          card.querySelector('.icon-btn').addEventListener('click', (ev)=>{
+            downloadBlob(ev.currentTarget.dataset.url, ev.currentTarget.dataset.name);
+          });
+
+        } catch (err){
+          console.error('Erro convertendo', f.name, err);
+        } finally {
+          done++;
+          progressBar.style.width = `${Math.round(done/total*100)}%`;
+        }
+      }
+
+      progressWrap.style.display='none';
+      if (convertedFiles.length){
+        resultCount.textContent = `${convertedFiles.length} convertida(s)`;
+        downloadZipBtn.disabled = false;
+        const zipBlob = await zip.generateAsync({ type:'blob' });
+        const zipUrl = URL.createObjectURL(zipBlob);
+        downloadZipBtn.onclick = ()=> downloadBlob(zipUrl, 'convertidas.zip');
+      } else {
+        resultCount.textContent = '0';
+        downloadZipBtn.disabled = true;
+      }
+    }
+
+    // ---------- Download helper ----------
+    function downloadBlob(url, name){
+      const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a);
+      a.click(); a.remove();
+    }
+
+    // ---------- initial simple features ----------
+    function humanSize(bytes){
+      if (!bytes) return '0 B';
+      const k=1024; const sizes=['B','KB','MB','GB'];
+      const i=Math.floor(Math.log(bytes)/Math.log(k));
+      return (bytes/Math.pow(k,i)).toFixed(2)+' '+sizes[i];
+    }
+
+    // ---------- Expose preview rendering on file input change ----------
+    fileInput.addEventListener('change', (e)=>{
+      handleFiles(e.target.files);
+    });
+
+    // on unload cleanup if desired
+    window.addEventListener('beforeunload', ()=>{ /* noop */ });
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Configurações do Sistema</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; padding: 20px; background-color: #f7f7f7; color: #333; }
+        .container { max-width: 650px; margin: 0 auto; padding: 20px; background: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { border-bottom: 2px solid #6366f1; padding-bottom: 10px; color: #6366f1; margin-top: 0; }
+        label { display: block; margin-top: 15px; margin-bottom: 5px; font-weight: 600; }
+
+        .input-group { position: relative; margin-bottom: 20px; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+
+        .toggle-password {
+            position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+            cursor: pointer; color: #6366f1; font-size: 1.1em; padding: 5px;
+        }
+
+        button { background: #6366f1; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; transition: background 0.2s; margin-top: 10px; }
+        button:hover { background: #4f52cc; }
+
+        /* Estilo para o novo botão 'Limpar Debug' */
+        #clearDebugButton {
+            background: #999;
+            margin-left: 10px;
+        }
+        #clearDebugButton:hover {
+            background: #777;
+        }
+
+        #debugBox {
+            margin-top: 25px; padding: 15px; background: #111; color: #0f0;
+            border-radius: 6px; font-family: monospace; font-size: 13px; height: 220px;
+            overflow-y: auto; display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔑 Configurações de API do Chatbot</h2>
+
+        <label for="openaiKey">Chave da API OpenAI (ChatGPT):</label>
+        <div class="input-group">
+            <input type="password" id="openaiKey" placeholder="Ex: sk-proj-xxxxxxxxxxxxxxxxxxxx">
+            <i class="fa-solid fa-eye toggle-password" onclick="toggleVisibility('openaiKey', this)"></i>
+        </div>
+
+        <label for="geminiKey">Chave da API Gemini (Google):</label>
+        <div class="input-group">
+            <input type="password" id="geminiKey" placeholder="Ex: AIzaSyxxxxxxxxxxxxxxxxxxxx">
+            <i class="fa-solid fa-eye toggle-password" onclick="toggleVisibility('geminiKey', this)"></i>
+        </div>
+
+        <button onclick="salvarChaves()">Salvar Configurações</button>
+        <button onclick="testarAPIs()">Verificar Status da API</button>
+        <button onclick="limparDebug()" id="clearDebugButton">Limpar Debug</button>
+
+        <div id="debugBox"></div>
+    </div>
+
+<script>
+const OPENAI_STORAGE_KEY = 'ai_key_openai';
+const GEMINI_STORAGE_KEY = 'ai_key_gemini';
+
+
+function parseError(api, errObj) {
+    if (!errObj || typeof errObj !== "object") return api + " → Erro desconhecido";
+
+    let msg = "";
+    try {
+        if (errObj.error) {
+            msg = errObj.error.message || JSON.stringify(errObj.error);
+            if (msg.includes("rate limit")) return api + " → Limite de uso excedido (rate limit)";
+            if (msg.includes("quota")) return api + " → Quota excedida";
+            if (msg.includes("model")) return api + " → Modelo inválido ou indisponível";
+            if (msg.includes("permission")) return api + " → Permissão negada";
+            if (msg.includes("key")) return api + " → Chave inválida";
+        }
+        if (errObj.message) msg = errObj.message;
+    } catch (e) {
+        msg = "Erro não interpretável";
+    }
+    return api + " → " + msg;
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('openaiKey').value = localStorage.getItem(OPENAI_STORAGE_KEY) || '';
+    document.getElementById('geminiKey').value = localStorage.getItem(GEMINI_STORAGE_KEY) || '';
+});
+
+function salvarChaves() {
+    localStorage.setItem(OPENAI_STORAGE_KEY, document.getElementById('openaiKey').value.trim());
+    localStorage.setItem(GEMINI_STORAGE_KEY, document.getElementById('geminiKey').value.trim());
+    debug("Chaves salvas.");
+}
+
+function debug(msg) {
+    const box = document.getElementById("debugBox");
+    box.style.display = "block";
+    box.innerHTML += new Date().toLocaleTimeString() + " → " + msg + "<br>";
+    box.scrollTop = box.scrollHeight;
+}
+
+// NOVA FUNÇÃO
+function limparDebug() {
+    const box = document.getElementById("debugBox");
+    box.innerHTML = "";
+    box.style.display = "none";
+    // O debug abaixo reativa a caixa com a mensagem de limpeza
+    debug("Caixa de debug limpa."); 
+}
+
+
+async function testarAPIs() {
+    const openaiKey = document.getElementById('openaiKey').value.trim();
+    const geminiKey = document.getElementById('geminiKey').value.trim();
+
+    debug("Iniciando teste das APIs...");
+
+    if (!openaiKey && !geminiKey) {
+        debug("Nenhuma chave encontrada!");
+        return;
+    }
+
+    // OPENAI LISTA DE MODELOS
+    if (openaiKey) {
+        debug("Testando OpenAI (lista de modelos)...");
+        try {
+            const r = await fetch("https://api.openai.com/v1/models", {
+                headers: { "Authorization": "Bearer " + openaiKey }
+            });
+            const data = await r.json();
+
+            if (r.ok) debug("OpenAI OK ✓");
+            else debug(parseError("OpenAI", data));
+
+        } catch (e) {
+            debug("Erro OpenAI (network): " + e.message);
+        }
+
+        // COMPLETION REAL
+        debug("Testando completion real OpenAI...");
+        try {
+            const r = await fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": "Bearer " + openaiKey,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [{ role: "user", content: "Diga apenas: TESTE OK" }]
+                })
+            });
+            const data = await r.json();
+
+            if (r.ok) debug("Completion OK → " + data.choices[0].message.content);
+            else debug(parseError("OpenAI Completion", data));
+
+        } catch (e) {
+            debug("Erro completion OpenAI (network): " + e.message);
+        }
+    }
+
+    // GEMINI LISTA DE MODELOS
+    if (geminiKey) {
+        debug("Testando Gemini...");
+        try {
+            const r = await fetch("https://generativelanguage.googleapis.com/v1/models?key=" + geminiKey);
+            const data = await r.json();
+
+            if (r.ok) debug("Gemini OK ✓");
+            else debug(parseError("Gemini", data));
+
+        } catch (e) {
+            debug("Erro Gemini (network): " + e.message);
+        }
+
+        // COMPLETION REAL GEMINI
+        debug("Testando completion real Gemini...");
+        try {
+            const r = await fetch("https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=" + geminiKey, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: "Diga apenas: TESTE OK" }] }]
+                })
+            });
+
+            const data = await r.json();
+
+            if (r.ok) debug("Completion Gemini OK → " + data.candidates[0].content.parts[0].text);
+            else debug(parseError("Gemini Completion", data));
+
+        } catch (e) {
+            debug("Erro completion Gemini (network): " + e.message);
+        }
+    }
+
+    debug("Teste concluído.");
+}
+
+function toggleVisibility(id, icon) {
+    const input = document.getElementById(id);
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+}
+</script>
+
+</body>
+</html>

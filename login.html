@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Login — Dashboard</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Inter", sans-serif;
+  }
+
+  body {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: radial-gradient(circle at top, #0b69ff, #001f4d 70%);
+    position: relative;
+  }
+
+  /* Fundo de partículas */
+  #particles {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+
+  /* Card de login */
+  .login-box {
+    position: relative;
+    z-index: 2;
+    width: 380px;
+    padding: 35px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 10px 45px rgba(0, 0, 0, 0.25);
+    animation: fadeIn 0.8s ease;
+  }
+
+  @keyframes fadeIn {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+  }
+
+  h2 {
+    color: #fff;
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 26px;
+    font-weight: 600;
+  }
+
+  .input-group {
+    position: relative;
+    margin-bottom: 18px;
+  }
+
+  .input-group input {
+    width: 100%;
+    padding: 13px 16px 13px 42px;
+    border-radius: 12px;
+    border: none;
+    outline: none;
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    font-size: 15px;
+    transition: 0.25s;
+  }
+
+  .input-group input::placeholder {
+    color: #e6e6e6;
+  }
+
+  .input-group input:focus {
+    background: rgba(255, 255, 255, 0.28);
+    box-shadow: 0 0 0 2px #7fb5ff;
+  }
+
+  .input-group i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #ffffffcc;
+    font-size: 15px;
+  }
+
+  .login-btn {
+    width: 100%;
+    padding: 13px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    background: #fff;
+    color: #0b69ff;
+    transition: 0.25s ease;
+    box-shadow: 0 4px 15px rgba(0, 80, 255, 0.3);
+  }
+
+  .login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 80, 255, 0.45);
+  }
+
+  .error {
+    color: #ffe6e6;
+    font-size: 14px;
+    text-align: center;
+    margin-bottom: 10px;
+  }
+</style>
+</head>
+
+<body>
+
+<canvas id="particles"></canvas>
+
+<div class="login-box">
+  <h2>Entrar no Sistema</h2>
+
+  <div id="error" class="error"></div>
+
+  <div class="input-group">
+    <i class="fa-solid fa-user"></i>
+    <input type="text" id="user" placeholder="Usuário">
+  </div>
+
+  <div class="input-group">
+    <i class="fa-solid fa-lock"></i>
+    <input type="password" id="pass" placeholder="Senha">
+  </div>
+
+  <button class="login-btn" id="loginBtn">Entrar</button>
+</div>
+
+<script>
+  const CORRECT_USER = "admin";
+  const CORRECT_PASS = "12345";
+
+  document.getElementById("loginBtn").addEventListener("click", () => {
+    const u = document.getElementById("user").value.trim();
+    const p = document.getElementById("pass").value.trim();
+    const error = document.getElementById("error");
+
+    if (u === CORRECT_USER && p === CORRECT_PASS) {
+      localStorage.setItem("logged", "true");
+      window.location.href = "index.html";
+    } else {
+      error.textContent = "Usuário ou senha incorretos.";
+    }
+  });
+  
+  // Login ao pressionar Enter
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    document.getElementById("loginBtn").click();
+  }
+});
+
+</script>
+
+<!-- Fundo animado com partículas -->
+<script>
+  const canvas = document.getElementById("particles");
+  const ctx = canvas.getContext("2d");
+  let particlesArray = [];
+
+  function initParticles() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    particlesArray = [];
+    for (let i = 0; i < 80; i++) {
+      particlesArray.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 2 + 1,
+        speedX: Math.random() * 0.6 - 0.3,
+        speedY: Math.random() * 0.6 - 0.3
+      });
+    }
+  }
+
+  function animateParticles() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    particlesArray.forEach(p => {
+      p.x += p.speedX;
+      p.y += p.speedY;
+
+      if (p.x < 0 || p.x > canvas.width) p.speedX *= -1;
+      if (p.y < 0 || p.y > canvas.height) p.speedY *= -1;
+
+      ctx.fillStyle = "rgba(255,255,255,0.8)";
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    requestAnimationFrame(animateParticles);
+  }
+
+  window.addEventListener("resize", initParticles);
+
+  initParticles();
+  animateParticles();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Upload de Custos (Global)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  :root{--accent:#22c55e;--bg:#f4f6fb;--card:#fff;--muted:#6b7280}
+  *{box-sizing:border-box}
+  body{font-family:Inter,system-ui,Arial; margin:0; background:var(--bg); color:#0f1724}
+  .wrap{max-width:800px;margin:24px auto;padding:16px}
+  .card{background:var(--card);padding:20px;border-radius:10px;box-shadow:0 6px 18px rgba(15,23,36,0.06)}
+  label{display:block;font-weight:600;margin:8px 0 6px;font-size:13px}
+  input[type="file"]{width:100%;padding:10px;border-radius:8px;border:1px solid #e6eef8;font-size:14px}
+  button{padding:12px 16px;border-radius:8px;border:none;cursor:pointer;font-weight:600;transition:.2s;color:white;background:var(--accent);margin-top:15px;}
+  button:hover{background:darken(var(--accent), 10%);}
+  h2{color:#1a202c;margin-top:0;}
+  .alert-info{padding:15px;background:#e0f2fe;color:#0369a1;border-radius:8px;margin-bottom:20px;border-left:5px solid #0369a1;}
+  .data-status{margin-top:20px;padding:15px;border-radius:8px;background:#f0f9ff;border:1px solid #bae6fd;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="card">
+    <h2>Upload de Custos Globais (Códigos x Preços)</h2>
+    <div class="alert-info">
+      <p>⚠️ <b>ATENÇÃO:</b> O upload de um novo arquivo substituirá completamente **todos** os custos de referência existentes no sistema (Mercado Livre, Amazon e Shopee).</p>
+      <p>Use dois arquivos <b>.txt</b> ou <b>.csv</b> simples, com uma coluna por arquivo (um para códigos e outro para custos). Os custos devem estar no formato `0.00` ou `0,00`.</p>
+    </div>
+
+    <div style="display: flex; gap: 15px;">
+        <div style="flex: 1;">
+            <label for="fileCodigos">1. Arquivo de Códigos de Referência (.txt/.csv)</label>
+            <input type="file" id="fileCodigos" accept=".txt,.csv">
+        </div>
+        <div style="flex: 1;">
+            <label for="fileCustos">2. Arquivo de Custos (R$ por linha) (.txt/.csv)</label>
+            <input type="file" id="fileCustos" accept=".txt,.csv">
+        </div>
+    </div>
+    
+    <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button id="btnImportarMassa" style="flex: 1; margin-top: 0;">
+            <i class="fa-solid fa-upload"></i> Importar Custos Globalmente
+        </button>
+        <button id="btnClearData" style="background: #ef4444; flex: 1; margin-top: 0;">
+            <i class="fa-solid fa-trash"></i> Limpar Base de Dados
+        </button>
+    </div>
+
+    <div class="data-status">
+        <strong>Status Atual:</strong> <span id="currentStatus">Carregando...</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Chave global para armazenamento de custos
+  const STORAGE_KEY = 'dbCodigos_global';
+  let dbCodigos = {}; 
+
+  // Variáveis temporárias para o upload
+  let tempCodigos = [];
+  let tempCustos = [];
+
+  // Função auxiliar para obter elemento
+  const $ = id => document.getElementById(id);
+
+  // Função de carregamento do arquivo
+  function parseFile(file, callback){
+    const reader = new FileReader();
+    reader.onload = function(e){
+      const lines = e.target.result.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+      callback(lines);
+    };
+    reader.readAsText(file);
+  }
+
+  // Carregar dados e atualizar status
+  function loadDataAndStatus() {
+    try {
+        dbCodigos = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        const count = Object.keys(dbCodigos).length;
+        $('currentStatus').textContent = `${count} códigos de referência com custo armazenados.`;
+    } catch(e) {
+        $('currentStatus').textContent = 'Erro ao carregar dados.';
+        dbCodigos = {};
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', loadDataAndStatus);
+
+  // Listeners para os arquivos
+  $('fileCodigos').addEventListener('change', e=>{
+    const f = e.target.files[0];
+    if(f) parseFile(f, lines=> tempCodigos = lines );
+  });
+  $('fileCustos').addEventListener('change', e=>{
+    const f = e.target.files[0];
+    if(f) parseFile(f, lines=> tempCustos = lines );
+  });
+
+  // Listener do botão de importação
+  $('btnImportarMassa').addEventListener('click', ()=>{
+    if(!tempCodigos.length || !tempCustos.length){ 
+      alert('Carregue os dois arquivos: códigos e custos.'); 
+      return; 
+    }
+    if(tempCodigos.length !== tempCustos.length){ 
+      alert('As colunas devem ter o mesmo número de linhas.'); 
+      return; 
+    }
+    
+    // Novo objeto de custos global
+    let newDbCodigos = {};
+    for(let i=0;i<tempCodigos.length;i++){
+      const codigo = tempCodigos[i];
+      // Tenta limpar e converter o custo
+      const custo = parseFloat(tempCustos[i].replace(',', '.')) || 0;
+      newDbCodigos[codigo] = custo;
+    }
+    
+    try{ 
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newDbCodigos)); 
+    }catch(e){
+      alert('Erro ao salvar no armazenamento local. Tente novamente.');
+      return;
+    }
+
+    // Limpar inputs de arquivo e variáveis temporárias após o sucesso
+    $('fileCodigos').value = '';
+    $('fileCustos').value = '';
+    tempCodigos = [];
+    tempCustos = [];
+
+    loadDataAndStatus();
+    alert('Dados de custo importados com sucesso. Registros: ' + Object.keys(newDbCodigos).length);
+  });
+  
+  // NOVO: Listener do botão de limpeza
+  $('btnClearData').addEventListener('click', ()=>{
+    if (confirm('Tem certeza que deseja apagar TODOS os custos globais? Esta ação não pode ser desfeita e zerará os custos em todos os precificadores (Mercado Livre, Amazon, etc.).')) {
+        try {
+            localStorage.removeItem(STORAGE_KEY);
+            dbCodigos = {}; // Atualiza a variável em memória
+            loadDataAndStatus();
+            alert('Base de dados de custos globais limpa com sucesso.');
+        } catch(e) {
+            alert('Erro ao limpar a base de dados.');
+        }
+    }
+  });
+
+</script>
+</body>
+</html>

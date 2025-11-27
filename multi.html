@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Precificador Unificado Multi-Marketplace (ML, Shopee, Amazon)</title>
+<style>
+  :root{--accent-ml:#ffcd00;--accent-shopee:#ff5722;--accent-amazon:#0b69ff;--bg:#f4f6fb;--card:#fff;--muted:#6b7280;--border-color:#e6eef8;}
+  *{box-sizing:border-box}
+  body{font-family:Inter,system-ui,Arial;margin:0;background:var(--bg);color:#0f1724}
+  .wrap{max-width:1300px;margin:24px auto;padding:16px}
+  
+  /* Layout Principal: 3 colunas para inputs e 1 linha para resultados */
+  .grid-container{display:grid;grid-template-columns:repeat(3, 1fr);gap:14px;margin-bottom:10px;}
+  .results-panel{grid-column: 1 / -1;} /* Painel de resultados ocupa toda a largura */
+  
+  .card{background:var(--card);padding:14px;border-radius:10px;box-shadow:0 6px 18px rgba(15,23,36,0.06)}
+  
+  label{display:block;font-weight:600;margin:8px 0 6px;font-size:13px}
+  input,select{width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);font-size:14px}
+  .row{display:flex;gap:8px}
+  .row> *{flex:1}
+  
+  button{padding:10px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:600;transition:.2s}
+  
+  /* Estilos específicos dos botões por marketplace */
+  .btn-ml{background:var(--accent-ml);color:#1a202c;}
+  .btn-ml:hover{background:#ffdb4d;}
+  .btn-shopee{background:var(--accent-shopee);color:white;}
+  .btn-shopee:hover{background:#e8501e;}
+  .btn-amazon{background:var(--accent-amazon);color:white;}
+  .btn-amazon:hover{background:#005be5;}
+  .secondary{background:#e6eef8;color:#0f1724}
+  .secondary:hover{background:#d5e4f4}
+  
+  .calc-btn{margin-top:15px;width:100%}
+  .input-group{margin-bottom:15px}
+  
+  h2{color:#1a202c;margin-top:0;font-size:20px;text-align:center;}
+  h3{color:#1a202c;margin-top:0;font-size:18px;}
+
+  /* Estilos para o painel de resultados */
+  .result-box{padding:12px;background:#fff;border:1px solid var(--border-color);border-radius:8px;margin-top:15px;display:grid;grid-template-columns:repeat(3, 1fr);gap:14px;}
+  .result-item{margin-bottom:8px;font-size:14px;padding:8px;border-radius:6px;}
+  .result-item strong{font-weight:700;display:block;font-size:15px;}
+  .result-item span{font-size:22px;font-weight:800;display:block;margin-top:4px;}
+
+  /* Cores de fundo dos resultados por marketplace */
+  .result-ml{background-color: #fffbe6;border: 1px solid #ffe000;}
+  .result-shopee{background-color: #fff0eb;border: 1px solid #ff977a;}
+  .result-amazon{background-color: #ebf5ff;border: 1px solid #cce0ff;}
+  
+  .result-item.final span{color:#10b981;font-size:26px;}
+  
+  .toast-container{position:fixed;top:20px;right:20px;z-index:1000}
+  .toast{padding:10px 15px;background:#333;color:white;border-radius:5px;opacity:0;transition:opacity .3s;box-shadow:0 2px 10px rgba(0,0,0,.1)}
+
+  /* Estilos do painel de controle */
+  .control-panel {
+    background: #e6eef8; 
+    padding: 10px 14px; 
+    border-radius: 8px; 
+    margin-bottom: 14px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+  }
+  
+  /* Novo estilo para botão Copiar no resultado */
+  .copy-btn-result {
+      background: #e6eef8;
+      color: #0b69ff;
+      border: 1px solid #cce0ff;
+      font-weight: 700;
+  }
+  
+  /* Detalhes de custo */
+  .details-p {
+    display: flex;
+    justify-content: space-between;
+    padding: 2px 0;
+    margin: 0;
+    font-size: 13px;
+    border-bottom: 1px dotted #ccc;
+  }
+  .details-p strong {
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <h1>Precificador Multi-Marketplace</h1>
+  
+  <div class="card control-panel">
+    <h3>Dados Comuns</h3>
+    <div class="row">
+        <div style="flex: 2;">
+            <label for="codigoRef">Consultar Custo (Código de Referência)</label>
+            <div class="row">
+                <input type="text" id="codigoRef" placeholder="Digite o código (ex: SKU-001)">
+                <button id="btnConsultarCodigo" class="secondary" style="width:120px">Consultar</button>
+            </div>
+        </div>
+        <div>
+            <label for="custo">Custo do Produto (R$)</label>
+            <input type="number" id="custo" placeholder="0.00" oninput="atualizarSelectML()" step="0.01">
+        </div>
+        <div>
+            <label for="impostos">Impostos (% sobre VENDA)</label>
+            <input type="number" id="impostos" placeholder="0.00" value="8.40" step="0.01">
+        </div>
+    </div>
+  </div>
+
+  <div class="grid-container">
+    
+    <div class="card">
+      <h2 style="color:var(--accent-ml);">Mercado Livre</h2>
+      <div class="input-group">
+        <label for="margemDesejadaML">Margem Desejada (ML) *</label>
+        <input type="number" id="margemDesejadaML" placeholder="17.00" value="17.00" step="0.01">
+      </div>
+      <div class="input-group">
+        <label for="freteAbsorvidoML">Frete Absorvido pelo Vendedor?</label>
+        <select id="freteAbsorvidoML">
+          <option value="nao">Não (Tarifa R$ 0,00)</option>
+          <option value="sim">Sim (Tarifa R$ 25,00)</option>
+        </select>
+        <small style="display:block; margin-top:5px; color:var(--muted); font-size:12px;">Automático se Custo > R$ 43,454</small>
+      </div>
+      <button id="btnCalcularML" class="btn-ml calc-btn">Calcular ML (Individual)</button>
+    </div>
+
+    <div class="card">
+      <h2 style="color:var(--accent-shopee);">Shopee</h2>
+      <div class="input-group">
+        <label for="margemDesejadaShopee">Margem Desejada (Shopee) *</label>
+        <input type="number" id="margemDesejadaShopee" placeholder="12.00" value="12.00" step="0.01">
+      </div>
+      <div class="input-group">
+        <label for="programaFreteGratisShopee">Participa do Programa de Frete Grátis?</label>
+        <select id="programaFreteGratisShopee">
+	      <option value="sim">Sim (Comissão 20% = 14% + 6%)</option>
+          <option value="nao">Não (Comissão 14%)</option>
+        </select>
+        <small style="display:block; margin-top:5px; color:var(--muted); font-size:12px;">Comissão total varia entre 14% e 20% + Taxa Fixa.</small>
+      </div>
+      <button id="btnCalcularShopee" class="btn-shopee calc-btn">Calcular Shopee (Individual)</button>
+    </div>
+
+    <div class="card">
+      <h2 style="color:var(--accent-amazon);">Amazon</h2>
+      <div class="input-group">
+        <label for="margemDesejadaAmazon">Margem Desejada (Amazon) *</label>
+        <input type="number" id="margemDesejadaAmazon" placeholder="10.00" value="10.00" step="0.01">
+      </div>
+      <div class="input-group row">
+        <div>
+            <label for="pesoAmazon">Peso do Produto (kg)</label>
+            <input type="number" id="pesoAmazon" placeholder="0.25" value="0.25" step="0.01">
+        </div>
+        <div>
+            <label for="categoriaAmazon">Categoria (Comissão %)</label>
+            <select id="categoriaAmazon">
+              <option value="0.11">Ferramentas e Casa (11%)</option>
+              <option value="0.15">Eletrônicos e Outros (15%)</option>
+            </select>
+        </div>
+      </div>
+      <div class="input-group">
+        <label for="tipoFreteAmazon">Tipo de Frete (Tarifa)</label>
+        <select id="tipoFreteAmazon">
+          <option value="nao">Não (Tarifa R$ 0,00)</option>
+          <option value="fixo15">Fixo R$ 15,00</option>
+          <option value="sim">Calculado por Tabela (EasyShip/FBA)</option>
+        </select>
+        <small style="display:block; margin-top:5px; color:var(--muted); font-size:12px;">Tarifa de Frete é absorvida pelo vendedor no cálculo.</small>
+      </div>
+      <button id="btnCalcularAmazon" class="btn-amazon calc-btn">Calcular Amazon (Individual)</button>
+    </div>
+  </div> <div class="row" style="margin-bottom: 20px;">
+      <button id="btnCalcularTudo" class="calc-btn" style="flex: 1; background-color: #1a202c; color: white; padding: 12px; font-size: 16px;">
+        🚀 CALCULAR TUDO DE UMA VEZ
+      </button>
+  </div>
+  
+  <div class="grid-container">
+    <div class="card results-panel" id="resultadosUnificados" style="display:none">
+        <h3>Resultados da Simulação</h3>
+        <div class="result-box">
+            <div class="result-ml">
+                <div class="result-item">
+                    <strong>Preço Sugerido ML:</strong>
+                    <div class="row" style="align-items: center;">
+                        <span id="precoVendaResultML" style="flex: 1;">R$ 0,00</span>
+                        <button onclick="copyPrice(lastResultML, 'Mercado Livre')" class="copy-btn-result" style="width: 80px; font-size: 13px; padding: 6px 8px;">Copiar</button>
+                    </div>
+                </div>
+                <div class="result-item final"><strong>Lucro Líquido ML:</strong> <span id="lucroResultML">R$ 0,00</span></div>
+                <div class="result-item"><strong>Margem Real ML:</strong> <span id="margemRealResultML">0,00 %</span></div>
+                <div class="result-item"><strong>Custo Fixo/Frete:</strong> <span id="custosFixosML">R$ 0,00</span></div>
+                
+                <div style="margin-top: 10px; text-align: center;">
+                    <button id="btn-details-ml" class="secondary" onclick="toggleDetails('ml')" style="font-size: 13px; width: 100%;">
+                        Ver Detalhes dos Custos
+                    </button>
+                </div>
+                <div id="details-ml" style="display:none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #ffe000;">
+                    </div>
+            </div>
+
+            <div class="result-shopee">
+                <div class="result-item">
+                    <strong>Preço Sugerido Shopee:</strong>
+                    <div class="row" style="align-items: center;">
+                        <span id="precoVendaResultShopee" style="flex: 1;">R$ 0,00</span>
+                        <button onclick="copyPrice(lastResultShopee, 'Shopee')" class="copy-btn-result" style="width: 80px; font-size: 13px; padding: 6px 8px;">Copiar</button>
+                    </div>
+                </div>
+                <div class="result-item final"><strong>Lucro Líquido Shopee:</strong> <span id="lucroResultShopee">R$ 0,00</span></div>
+                <div class="result-item"><strong>Margem Real Shopee:</strong> <span id="margemRealResultShopee">0,00 %</span></div>
+                <div class="result-item"><strong>Taxa Fixa/Comissão:</strong> <span id="taxasShopee">R$ 0,00</span></div>
+                
+                <div style="margin-top: 10px; text-align: center;">
+                    <button id="btn-details-shopee" class="secondary" onclick="toggleDetails('shopee')" style="font-size: 13px; width: 100%;">
+                        Ver Detalhes dos Custos
+                    </button>
+                </div>
+                <div id="details-shopee" style="display:none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #ff977a;">
+                    </div>
+            </div>
+
+            <div class="result-amazon">
+                <div class="result-item">
+                    <strong>Preço Sugerido Amazon:</strong>
+                    <div class="row" style="align-items: center;">
+                        <span id="precoVendaResultAmazon" style="flex: 1;">R$ 0,00</span>
+                        <button onclick="copyPrice(lastResultAmazon, 'Amazon')" class="copy-btn-result" style="width: 80px; font-size: 13px; padding: 6px 8px;">Copiar</button>
+                    </div>
+                </div>
+                <div class="result-item final"><strong>Lucro Líquido Amazon:</strong> <span id="lucroResultAmazon">R$ 0,00</span></div>
+                <div class="result-item"><strong>Margem Real Amazon:</strong> <span id="margemRealResultAmazon">0,00 %</span></div>
+                <div class="result-item"><strong>Tarifa Frete/Comissão:</strong> <span id="taxasAmazon">R$ 0,00</span></div>
+                
+                <div style="margin-top: 10px; text-align: center;">
+                    <button id="btn-details-amazon" class="secondary" onclick="toggleDetails('amazon')" style="font-size: 13px; width: 100%;">
+                        Ver Detalhes dos Custos
+                    </button>
+                </div>
+                <div id="details-amazon" style="display:none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #cce0ff;">
+                    </div>
+            </div>
+        </div>
+        <div class="row" style="margin-top: 15px; justify-content: center;">
+            <button id="btnExportarTudo" class="btn-amazon" style="flex: 0 1 250px;">Exportar Resultados (CSV)</button>
+        </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container"><div id="toast" class="toast"></div></div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  
+  // Base de custos 
+  let dbCodigos = JSON.parse(localStorage.getItem('dbCodigos_global') || '{}');
+  
+  // Objetos para armazenar os últimos resultados
+  let lastResultML = {};
+  let lastResultShopee = {};
+  let lastResultAmazon = {};
+
+  function showToast(message, duration = 3000) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.style.opacity = '1';
+    setTimeout(() => {
+      toast.style.opacity = '0';
+    }, duration);
+  }
+
+  
+  // FORMATAÇÃO BRL
+  const formatOptions = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+  
+  // Formata números para o padrão monetário brasileiro
+  function formatBRL(value) {
+    if (isNaN(value) || value === null) return 'R$ 0,00';
+    const number = parseFloat(value);
+    return 'R$ ' + number.toLocaleString('pt-BR', formatOptions);
+  }
+
+  // Formata números para o padrão percentual brasileiro 
+  function formatPercentage(value) {
+    if (isNaN(value) || value === null) return '0,00 %';
+    const number = parseFloat(value);
+    return number.toLocaleString('pt-BR', formatOptions) + ' %';
+  }
+
+  // Tabela simplificada de tarifas EasyShip/FBA da Amazon
+  const TARIFA_FRETE_EASYSHIP_FBA = [
+    { peso_max: 0.1, tarifa: 10.90 },
+    { peso_max: 0.5, tarifa: 12.50 },
+    { peso_max: 1.0, tarifa: 14.90 },
+    { peso_max: 2.0, tarifa: 18.50 },
+    { peso_max: 5.0, tarifa: 25.00 },
+    { peso_max: 10.0, tarifa: 35.00 },
+    { peso_max: 9999, tarifa: 50.00 }
+  ];
+
+  function getShippingTariff(weightKg) {
+    if (weightKg <= 0) return 0.00;
+    for (const item of TARIFA_FRETE_EASYSHIP_FBA) {
+      if (weightKg <= item.peso_max) {
+        return item.tarifa;
+      }
+    }
+    return 50.00;
+  }
+
+  // MERCADO LIVRE
+  function atualizarSelectML() {
+      const valor = +$('custo').value;
+      const selectElement = $('freteAbsorvidoML');
+      if (valor > 43.454) {
+          selectElement.value = 'sim';
+      } else {
+          selectElement.value = 'nao';
+      }
+  }
+  
+  atualizarSelectML();
+
+  function calculateML() {
+    const custoProduto = parseFloat($('custo').value) || 0;
+    const impostos = parseFloat($('impostos').value) / 100 || 0;
+    const margemDesejada = parseFloat($('margemDesejadaML').value) / 100 || 0; 
+    const freteAbsorvido = $('freteAbsorvidoML').value;
+    
+    const comissaoML = 0.12;
+    const tarifaFreteAbsorvido = (freteAbsorvido === 'sim') ? 25.00 : 0.00;
+    const denominador = 1 - comissaoML - impostos - margemDesejada;
+    
+    if (denominador <= 0) {
+      showToast("ML: Margem/Impostos/Comissão totalizam 100% ou mais. Ajuste a Margem Desejada.", 5000);
+      return;
+    }
+
+    let precoVenda = (custoProduto + tarifaFreteAbsorvido) / denominador;
+    let custoFixoExtra = 0;
+    
+    if (precoVenda < 79.00) {
+      custoFixoExtra = 6.00-0.30;
+      precoVenda = (custoProduto + tarifaFreteAbsorvido + custoFixoExtra) / denominador;
+    }
+
+    let custoAdicionalFixo = 0;
+    const THRESHOLD_CUSTO = 43.454;
+    const MARKUP_VALOR = 0.80;
+
+    if (custoProduto < THRESHOLD_CUSTO) {
+      custoAdicionalFixo = MARKUP_VALOR;
+      precoVenda = (custoProduto + tarifaFreteAbsorvido + custoFixoExtra + custoAdicionalFixo) / denominador;
+    }
+    
+    const comissaoMLValor = precoVenda * comissaoML;
+    const impostosValor = precoVenda * impostos;
+    const custosETaxas = custoProduto + custoFixoExtra + custoAdicionalFixo + tarifaFreteAbsorvido + comissaoMLValor + impostosValor;
+    const lucroReal = precoVenda - custosETaxas;
+    const margemReal = (lucroReal / precoVenda) * 100;
+
+    // Preencher resultados unificados (usando formatBRL e formatPercentage)
+    $('precoVendaResultML').textContent = formatBRL(precoVenda);
+    $('lucroResultML').textContent = formatBRL(lucroReal);
+    $('margemRealResultML').textContent = formatPercentage(margemReal);
+    $('custosFixosML').textContent = formatBRL(tarifaFreteAbsorvido + custoFixoExtra + custoAdicionalFixo);
+    $('resultadosUnificados').style.display = 'grid';
+
+    // Armazenar último resultado (mantendo o número puro para cópia/exportação)
+    lastResultML = {
+      market: 'Mercado Livre',
+      precoVenda: precoVenda.toFixed(2),
+      custoProduto: custoProduto.toFixed(2),
+      custoFixoExtra: custoFixoExtra.toFixed(2),
+      custoAdicionalFixo: custoAdicionalFixo.toFixed(2),
+      tarifaFreteAbsorvido: tarifaFreteAbsorvido.toFixed(2),
+      comissaoML: comissaoMLValor.toFixed(2),
+      impostos: impostosValor.toFixed(2),
+      lucroReal: lucroReal.toFixed(2),
+      margemReal: margemReal.toFixed(2)
+    };
+    
+    // Esconder detalhes após o cálculo para reset visual
+    const detailsElement = $('details-ml');
+    const buttonElement = $('btn-details-ml');
+    detailsElement.style.display = 'none';
+    buttonElement.textContent = 'Ver Detalhes dos Custos';
+  }
+
+  // SHOPEE
+  function calculateShopee() {
+    const custoProduto = parseFloat($('custo').value) || 0;
+    const impostos = parseFloat($('impostos').value) / 100 || 0;
+    const margemDesejada = parseFloat($('margemDesejadaShopee').value) / 100 || 0;
+    const participaFreteGratis = $('programaFreteGratisShopee').value;
+    
+    let comissaoShopeePercent = (participaFreteGratis === 'sim') ? 0.20 : 0.14; 
+    let taxaFixaShopee = 4.00; 
+    let precoVenda = 0;
+    
+    const denominador = 1 - comissaoShopeePercent - impostos - margemDesejada;
+
+    if (denominador <= 0) {
+      showToast("Shopee: Margem/Impostos/Comissão totalizam 100% ou mais. Ajuste a Margem Desejada.", 5000);
+      return;
+    }
+
+    let pv_estimate = (custoProduto + taxaFixaShopee) / denominador;
+    
+    if (pv_estimate < 8.00) {
+      taxaFixaShopee = 0; 
+      const taxaFixaPercentual = 0.50;
+      const novoDenominador = denominador - taxaFixaPercentual; 
+
+      if (novoDenominador <= 0) {
+          showToast("Shopee: A taxa de 50% para produtos de baixo valor torna o cálculo impossível. Aumente a Margem Desejada.", 5000);
+          return;
+      }
+
+      precoVenda = custoProduto / novoDenominador;
+      taxaFixaShopee = precoVenda * taxaFixaPercentual; 
+      
+    } else {
+        precoVenda = pv_estimate;
+        taxaFixaShopee = 4.00;
+    }
+    
+    const comissaoShopeeValor = precoVenda * comissaoShopeePercent;
+    const impostosValor = precoVenda * impostos;
+    
+    // Teto de R$ 100,00 na comissão percentual
+    let comissaoLimitada = Math.min(comissaoShopeeValor, 100.00);
+    
+    const custosETaxasAposTeto = custoProduto + comissaoLimitada + impostosValor + taxaFixaShopee;
+    const lucroRealAposTeto = precoVenda - custosETaxasAposTeto;
+    const margemRealAposTeto = (lucroRealAposTeto / precoVenda) * 100;
+
+    // Preencher resultados unificados (usando formatBRL e formatPercentage)
+    $('precoVendaResultShopee').textContent = formatBRL(precoVenda);
+    $('lucroResultShopee').textContent = formatBRL(lucroRealAposTeto);
+    $('margemRealResultShopee').textContent = formatPercentage(margemRealAposTeto);
+    $('taxasShopee').textContent = formatBRL(comissaoLimitada + taxaFixaShopee);
+    $('resultadosUnificados').style.display = 'grid';
+
+    // Armazenar último resultado
+    lastResultShopee = {
+      market: 'Shopee',
+      precoVenda: precoVenda.toFixed(2),
+      custoProduto: custoProduto.toFixed(2),
+      comissaoShopeePercent: (comissaoShopeePercent * 100).toFixed(2),
+      taxaFixaShopee: taxaFixaShopee.toFixed(2),
+      comissaoShopeeValor: comissaoLimitada.toFixed(2),
+      impostos: impostosValor.toFixed(2),
+      lucroReal: lucroRealAposTeto.toFixed(2),
+      margemReal: margemRealAposTeto.toFixed(2)
+    };
+
+    // Esconder detalhes após o cálculo para reset visual
+    const detailsElement = $('details-shopee');
+    const buttonElement = $('btn-details-shopee');
+    detailsElement.style.display = 'none';
+    buttonElement.textContent = 'Ver Detalhes dos Custos';
+  }
+  
+  // AMAZON
+  function calculateAmazon() {
+    const custoProduto = parseFloat($('custo').value) || 0;
+    const impostos = parseFloat($('impostos').value) / 100 || 0;
+    const margemDesejada = parseFloat($('margemDesejadaAmazon').value) / 100 || 0;
+    const pesoProduto = parseFloat($('pesoAmazon').value) || 0;
+    const comissaoAmazonPercent = parseFloat($('categoriaAmazon').value) || 0.11;
+    const tipoFrete = $('tipoFreteAmazon').value;
+
+    let tarifaFrete = 0.00;
+    if (tipoFrete === 'fixo15') {
+      tarifaFrete = 15.00;
+    } else if (tipoFrete === 'sim') {
+      tarifaFrete = getShippingTariff(pesoProduto);
+    } 
+
+    const denominador = 1 - comissaoAmazonPercent - impostos - margemDesejada;
+
+    if (denominador <= 0) {
+      showToast("Amazon: Margem/Impostos/Comissão totalizam 100% ou mais. Ajuste a Margem Desejada.", 5000);
+      return;
+    }
+
+    const precoVenda = (custoProduto + tarifaFrete) / denominador;
+    
+    const comissaoAmazon = precoVenda * comissaoAmazonPercent;
+    const impostosValor = precoVenda * impostos;
+    
+    const custosETaxas = custoProduto + comissaoAmazon + impostosValor + tarifaFrete;
+    const lucroReal = precoVenda - custosETaxas;
+    const margemReal = (lucroReal / precoVenda) * 100;
+
+    // Preencher resultados unificados (usando formatBRL e formatPercentage)
+    $('precoVendaResultAmazon').textContent = formatBRL(precoVenda);
+    $('lucroResultAmazon').textContent = formatBRL(lucroReal);
+    $('margemRealResultAmazon').textContent = formatPercentage(margemReal);
+    $('taxasAmazon').textContent = formatBRL(comissaoAmazon + tarifaFrete);
+    $('resultadosUnificados').style.display = 'grid';
+
+    // Armazenar último resultado
+    lastResultAmazon = {
+      market: 'Amazon',
+      precoVenda: precoVenda.toFixed(2),
+      custoProduto: custoProduto.toFixed(2),
+      comissaoAmazon: comissaoAmazon.toFixed(2),
+      comissaoAmazonPercent: (comissaoAmazonPercent * 100).toFixed(1),
+      tarifaFrete: tarifaFrete.toFixed(2),
+      impostos: impostosValor.toFixed(2),
+      lucroReal: lucroReal.toFixed(2),
+      margemReal: margemReal.toFixed(2)
+    };
+
+    // Esconder detalhes após o cálculo para reset visual
+    const detailsElement = $('details-amazon');
+    const buttonElement = $('btn-details-amazon');
+    detailsElement.style.display = 'none';
+    buttonElement.textContent = 'Ver Detalhes dos Custos';
+  }
+
+  // CALCULAR TUDO DE UMA VEZ
+  function calculateAll() {
+    calculateML();
+    calculateShopee();
+    calculateAmazon();
+    showToast('Cálculo unificado concluído!');
+  }
+  
+  // MOSTRAR/ESCONDER DETALHES
+  function toggleDetails(platform) {
+    const detailsElement = $(`details-${platform}`);
+    const buttonElement = $(`btn-details-${platform}`);
+
+    if (detailsElement.style.display === 'none' || detailsElement.style.display === '') {
+        populateDetails(platform); 
+        detailsElement.style.display = 'block';
+        buttonElement.textContent = 'Esconder Detalhes';
+    } else {
+        detailsElement.style.display = 'none';
+        buttonElement.textContent = 'Ver Detalhes dos Custos';
+    }
+  }
+
+  // Função para popular o conteúdo detalhado
+  function populateDetails(platform) {
+      const detailDiv = $(`details-${platform}`);
+      let result = {};
+      let impostosPercent = parseFloat($('impostos').value).toFixed(2).replace('.', ',');
+      
+      let detailsHtml = '<div style="font-size: 13px; font-weight: 600; margin-bottom: 5px;">DETALHES DOS CUSTOS</div>';
+      
+      if (platform === 'ml' && Object.keys(lastResultML).length > 0) {
+          result = lastResultML;
+          
+          detailsHtml += `<p class="details-p"><span>Custo do Produto:</span> <strong>${formatBRL(result.custoProduto)}</strong></p>`;
+          detailsHtml += `<p class="details-p"><span>Impostos (${impostosPercent}%):</span> <strong>${formatBRL(result.impostos)}</strong></p>`;
+          detailsHtml += `<p class="details-p"><span>Comissão ML (12%):</span> <strong>${formatBRL(result.comissaoML)}</strong></p>`;
+          detailsHtml += `<p class="details-p"><span>Tarifa Frete Absorvido:</span> <strong>${formatBRL(result.tarifaFreteAbsorvido)}</strong></p>`;
+          detailsHtml += `<p class="details-p"><span>Custo Fixo Extra (R$6,00 < R$79):</span> <strong>${formatBRL(result.custoFixoExtra)}</strong></p>`;
+          detailsHtml += `<p class="details-p"><span>Custo Adicional (R$0,80 < R$43,454):</span> <strong>${formatBRL(result.custoAdicionalFixo)}</strong></p>`;
+          
+      } else if (platform === 'shopee' && Object.keys(lastResultShopee).length > 0) {
+          result = lastResultShopee;
+          
+          detailsHtml += `<p class="details-p"><span>Custo do Produto:</span> <strong>${formatBRL(result.custoProduto)}</strong></p>`;
+          detailsHtml += `<p class="details-p"><span>Impostos (${impostosPercent}%):</span> <strong>${formatBRL(result.impostos)}</strong></p>`;
+          detailsHtml += `<p class="details-p"><span>Comissão Shopee (${result.comissaoShopeePercent}%):</span> <strong>${formatBRL(result.comissaoShopeeValor)}</strong></p>`;
+          detailsHtml += `<p class="details-p"><span>Taxa Fixa (R$):</span> <strong>${formatBRL(result.taxaFixaShopee)}</strong></p>`;
+          
+      } else if (platform === 'amazon' && Object.keys(lastResultAmazon).length > 0) {
+          result = lastResultAmazon;
+          
+          detailsHtml += `<p class="details-p"><span>Custo do Produto:</span> <strong>${formatBRL(result.custoProduto)}</strong></p>`;
+          detailsHtml += `<p class="details-p"><span>Impostos (${impostosPercent}%):</span> <strong>${formatBRL(result.impostos)}</strong></p>`;
+          detailsHtml += `<p class="details-p"><span>Comissão Amazon (${result.comissaoAmazonPercent}%):</span> <strong>${formatBRL(result.comissaoAmazon)}</strong></p>`;
+          detailsHtml += `<p class="details-p"><span>Tarifa de Frete Absorvido:</span> <strong>${formatBRL(result.tarifaFrete)}</strong></p>`;
+      } else {
+          detailsHtml = '<p style="color: #e8501e; margin: 0;">É necessário calcular o preço antes de ver os detalhes.</p>';
+      }
+      
+      detailDiv.innerHTML = detailsHtml;
+  }
+  
+
+  // COPIAR PREÇO
+  function copyPrice(resultObject, platformName) {
+    if (resultObject && resultObject.precoVenda) {
+        const priceValue = parseFloat(resultObject.precoVenda);
+        // Formata o valor numérico para o formato X.XXX,XX (sem R$ e sem separador de milhar)
+        const priceToCopy = priceValue.toLocaleString('pt-BR', formatOptions);
+        navigator.clipboard.writeText(priceToCopy);
+        showToast(`Preço ${priceToCopy} (${platformName}) copiado!`);
+    } else {
+        showToast(`Nenhum preço calculado para ${platformName}.`);
+    }
+  }
+
+
+
+  // PESQUISA DE CUSTO
+  function searchCost() {
+    const c = $('codigoRef').value.trim();
+    if (!c) { 
+      $('custo').value = (0).toFixed(2);
+      return; 
+    }
+    
+    if (dbCodigos[c] != null) { 
+      $('custo').value = dbCodigos[c].toFixed(2); 
+      atualizarSelectML(); // Atualiza o frete ML após carregar o custo
+      showToast(`Custo encontrado: R$ ${dbCodigos[c].toFixed(2).replace('.', ',')}`);
+    } else { 
+      $('custo').value = (0).toFixed(2);
+      atualizarSelectML(); // Atualiza o frete ML com o custo zerado
+      showToast('Código não encontrado na base de custos global.');
+    }
+  }
+
+
+  // EXPORTAÇÃO UNIFICADA
+
+  function exportAll() {
+      if (Object.keys(lastResultML).length === 0 && Object.keys(lastResultShopee).length === 0 && Object.keys(lastResultAmazon).length === 0) {
+          showToast('Calcule pelo menos um preço antes de exportar.');
+          return;
+      }
+      // O código de exportação permanece com ponto como separador decimal para compatibilidade com CSV
+      const data = [
+          ['Marketplace', 'Preço Venda (R$)', 'Lucro Real (R$)', 'Margem Real (%)', 'Custo Produto (R$)', 'Comissão (R$)', 'Frete/Taxa Fixa (R$)', 'Impostos (R$)']
+      ];
+
+      if (Object.keys(lastResultML).length > 0) {
+          const totalFixosML = parseFloat(lastResultML.custoFixoExtra) + parseFloat(lastResultML.custoAdicionalFixo) + parseFloat(lastResultML.tarifaFreteAbsorvido);
+          data.push([
+              lastResultML.market,
+              lastResultML.precoVenda,
+              lastResultML.lucroReal,
+              lastResultML.margemReal,
+              lastResultML.custoProduto,
+              lastResultML.comissaoML,
+              totalFixosML.toFixed(2),
+              lastResultML.impostos
+          ]);
+      }
+
+      if (Object.keys(lastResultShopee).length > 0) {
+          data.push([
+              lastResultShopee.market,
+              lastResultShopee.precoVenda,
+              lastResultShopee.lucroReal,
+              lastResultShopee.margemReal,
+              lastResultShopee.custoProduto,
+              lastResultShopee.comissaoShopeeValor,
+              lastResultShopee.taxaFixaShopee,
+              lastResultShopee.impostos
+          ]);
+      }
+
+      if (Object.keys(lastResultAmazon).length > 0) {
+          data.push([
+              lastResultAmazon.market,
+              lastResultAmazon.precoVenda,
+              lastResultAmazon.lucroReal,
+              lastResultAmazon.margemReal,
+              lastResultAmazon.custoProduto,
+              lastResultAmazon.comissaoAmazon,
+              lastResultAmazon.tarifaFrete,
+              lastResultAmazon.impostos
+          ]);
+      }
+
+      // Cria CSV
+      const csvContent = data.map(e => e.join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'simulacao_unificada_' + new Date().toISOString().slice(0, 10) + '.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('Simulação unificada exportada para CSV.');
+  }
+
+
+
+  // LISTENERS GERAIS
+
+  $('btnCalcularML').addEventListener('click', calculateML);
+  $('btnCalcularShopee').addEventListener('click', calculateShopee);
+  $('btnCalcularAmazon').addEventListener('click', calculateAmazon);
+  $('btnCalcularTudo').addEventListener('click', calculateAll);
+  $('btnConsultarCodigo').addEventListener('click', searchCost);
+  $('btnExportarTudo').addEventListener('click', exportAll);
+  
+  // Adiciona a consulta ao pressionar Enter no campo de código
+  $('codigoRef').addEventListener('keypress', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault(); 
+      searchCost();
+    }
+  });
+
+  // Atualiza o select ML ao digitar no Custo do Produto
+  $('custo').addEventListener('input', atualizarSelectML);
+  
+</script>
+</body>
+</html>
